@@ -1,50 +1,59 @@
 # Product Category Classifier
 
-A multi-modal computer vision case study — a CNN that classifies product photos using the image *and* a structured attribute together, evaluated honestly against an image-only baseline, with a small local LLM agent layered on top so the result is something you can actually talk to.
+A multi-modal computer vision case study — built around a real enterprise scenario, evaluated with statistical rigor instead of a single lucky training run, with a local LLM agent and a data contract layered on top.
 
 ## Objective
 
-Online catalogs have product photos and a few structured attributes, but category tagging is often incomplete or inconsistent — someone has to do it by hand, and it doesn't scale. The question this project answers: **does a model that sees the photo and one structured attribute together actually beat a model that only sees the photo?**
+**The scenario:** an e-commerce company receives new products every month and needs each one classified against an established data contract before it can flow into downstream ML models and executive/operational reports. Classifying products by hand doesn't scale — the company wants an automated classifier with a high bar for reliability: a fixed output schema, automated tests, and a quality view that both an engineer and an operations manager can read.
 
-That's not a rhetorical question I'm answering "yes" to by default. Multi-modal architectures are easy to build and easy to oversell — the point of this case study is to measure the lift honestly, including the parts where it doesn't show up, and to land on something that demonstrates real applied skill rather than a clean story that happens not to be true.
+**The technical question this case study actually answers:** does feeding the model a product's structured attributes (gender, color, season, usage) *in addition to* its photo improve classification over a photo-only model? That's the standard pitch for multi-modal architectures, and it's worth testing honestly rather than assuming it's true.
 
-The underlying multi-input pattern — an image branch and a small categorical branch, concatenated into a shared classifier — is one I first built for a DataCamp AI Engineer certification exercise (an OCR model reading insurance documents). The architecture transfers almost exactly here; the dataset, the problem, the evaluation, and the agent layer are original.
+It isn't, here. **The image-only baseline beats the multi-modal model on every configuration tested**, across 3 training seeds, after also testing whether more training time or a smaller attribute set would close the gap. That's the actual finding, and the production recommendation below reflects it — see [Results](#results) for the numbers and [why](#why-the-baseline-wins) the multi-modal hypothesis didn't hold up here.
+
+The underlying multi-input pattern — an image branch and a small categorical branch, concatenated into a shared classifier — is one I first built for a DataCamp AI Engineer certification exercise (an OCR model reading insurance documents). The architecture transfers almost exactly here; the dataset, the problem, the rigor, and the agent/data-contract layer are original.
 
 ## The Data
 
 [Fashion Product Images (Small)](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small), via the public Hugging Face mirror [`ashraq/fashion-product-images-small`](https://huggingface.co/datasets/ashraq/fashion-product-images-small) — no auth required, loads directly through the `datasets` library.
 
-- 44,072 product photos with structured metadata (gender, category, color, season, usage, display name).
-- **Image:** the product photo, resized to 80x80 RGB. (The original cert exercise used 64x64 grayscale — inherited from a synthetic dataset. These are real product photos at roughly a 3:4 aspect ratio, so 80x80 keeps more real detail without distorting the crop.)
-- **Second modality:** `gender` (Men / Women / Boys / Girls / Unisex) — the structured attribute every product is already tagged with.
-- **Target:** `masterCategory`. The raw data has 7 categories, but two are barely represented at all — "Home" has a single example in the whole dataset, "Sporting Goods" has 25. Neither survives a stratified train/val/test split, so `src/data.py` drops anything under 100 samples. **5 classes remain: Accessories, Apparel, Footwear, Free Items, Personal Care.**
+- 44,072 product photos with structured metadata.
+- **Image:** the product photo, resized to 80x80 RGB.
+- **Structured attributes (the second modality):** `gender`, `baseColour`, `season`, `usage` — concatenated into a 62-dimensional one-hot vector. This is the closest analog to a real product data contract: fields that are already known about a product before anyone looks at the photo.
+- **Target:** `subCategory` (e.g. Topwear, Bottomwear, Shoes, Bags, Watches) — **27 classes** after dropping anything under 100 samples (18 classes / 368 rows dropped; 99.2% of the data retained). This is a deliberately finer grain than a first pass at this dataset would use (`masterCategory`, 5 broad classes) — at the broad grain, the photo alone nearly saturates the signal, which makes it a weak test of whether structured attributes add anything. `subCategory` is also what a real catalog data contract would actually require.
 
 ## Methodology
 
-**Two models, one true difference between them**, so the comparison actually means something:
+**Two models, one true difference between them:**
 
-- **Baseline** — image-only CNN.
-- **Proposed** — the same image branch, plus a small `gender_layer` MLP branch, concatenated before the classifier head.
+- **Baseline** — image-only CNN (3 conv blocks, BatchNorm, Dropout).
+- **Proposed** — the identical image branch, plus a small attribute MLP branch, concatenated before the classifier head.
 
-Both trained identically: same 80x80 RGB preprocessing, same 70/15/15 stratified split, same 10 epochs, same class-weighted loss (the class imbalance is real — Apparel alone is ~48% of the data). The only variable that changes is whether the model sees `gender`.
+Both trained identically: same 80x80 RGB preprocessing, same 70/15/15 stratified split, same class-weighted loss, same optimizer. The only variable that changes is whether the model sees the attribute branch.
 
-**Evaluation:** accuracy, macro-F1, weighted-F1, full per-class precision/recall/F1, and confusion matrices on a held-out test set — plus one metric that isn't standard but matters more for this problem than accuracy does: **auto-tag rate**, the share of items the model predicts at ≥85% confidence (configurable). Accuracy tells you how good the model is on average; auto-tag rate tells a catalog team how much manual review they actually get to skip.
+**Statistical rigor — 3 training seeds, not one.** A single training run isn't sufficient evidence for a claim like "model X beats model Y" in a setting where the result feeds downstream decisions. Every number in this README is a mean ± standard deviation across seeds `[0, 1, 2]`, with the train/val/test split itself held fixed across seeds (`SPLIT_SEED=42`) so seed-to-seed variation isolates "is the architecture better," not "did we get a lucky data partition."
+
+**Before concluding anything, two legitimate follow-up experiments were run** (see [Why the baseline wins](#why-the-baseline-wins)):
+1. An attribute ablation — does a smaller, less noisy attribute subset help the proposed model?
+2. A longer training run (25 vs. 10 epochs) — did the proposed model just need more time to converge?
+
+Neither changed the conclusion. That's the point of running them: a result that survives both isn't a fluke.
+
+**Evaluation:** accuracy, macro-F1, weighted-F1, full per-class precision/recall/F1, and confusion matrices on a held-out test set — plus an **auto-tag rate**: the share of items the model predicts at ≥85% confidence (configurable in the app), which is the operational number that actually matters to a catalog team deciding how much manual review they can skip.
 
 ## Architecture
 
-**Model architecture** (see `src/models.py`):
+**Model architecture** (see `src/models.py` — both models share the exact same image trunk, built by one function, so "only the attribute branch differs" is enforced by code, not convention):
 
 ```
-BaselineImageModel:                    MultiModalProductClassifier:
-  image (3x80x80)                        image (3x80x80)        gender (one-hot, 5)
-       |                                       |                        |
-  Conv2d -> Pool -> ReLU                  Conv2d -> Pool -> ReLU        |
-  Conv2d -> Pool -> ReLU                  Conv2d -> Pool -> ReLU        |
-       |                                       |                  Linear -> ReLU
-  Flatten -> Linear(128)                  Flatten -> Linear(128)        |
-       |                                       \________________ concat
-  Linear -> num_classes                                  |
-                                                  Linear -> ReLU -> Linear -> num_classes
+BaselineImageModel:                       MultiModalProductClassifier:
+  image (3x80x80)                           image (3x80x80)         attrs (one-hot, 62)
+       |                                          |                          |
+  [Conv-BN-ReLU-Pool] x3                     [Conv-BN-ReLU-Pool] x3          |
+       |                                          |                    Linear -> ReLU -> Dropout
+  Flatten -> Linear(128) -> Dropout           Flatten -> Linear(128)         |
+       |                                          \_________________ concat
+  Linear -> num_classes                                    |
+                                                   Linear -> ReLU -> Dropout -> Linear -> num_classes
 ```
 
 **Product architecture** — how the pieces fit together end to end:
@@ -52,32 +61,38 @@ BaselineImageModel:                    MultiModalProductClassifier:
 ```
 Product photo ──┐
                  ├──► CNN image branch ──┐
-Gender segment ──┘    + MLP branch ──────┼──► Classifier ──► Category
+Attributes ──────┘    + MLP branch ──────┼──► Classifier ──► Subcategory
                                           │
-Trained checkpoints ─────────────────────┼──► classify_product (tool)
+Trained checkpoints ─────────────────────┼──► classify_product (tool, contract-wrapped)
 Catalog metadata ──► Chroma index ───────┼──► search_similar_products (tool)
                                           │
                               Local LLM (Ollama, llama3.1:8b) ──► Chat
 ```
 
-On top of the classifier, a small agent (served locally by Ollama — no external API, no API key, nothing that can leak from a public repo) has two tools: `classify_product` calls the trained model above, and `search_similar_products` runs a RAG lookup over the catalog's text metadata in a local Chroma index. The agent decides on its own which tool a question needs — see `src/agent.py`.
+On top of the classifier: a **data contract** (`src/contract.py`) defines the exact output schema a downstream consumer can rely on — `product_id`, `predicted_subcategory`, `confidence`, `model_name`, `model_version`, `predicted_at` — with `validate_prediction_record()` raising loudly on a malformed record rather than passing it through. A small local agent (Ollama — no external API, no API key, nothing that can leak from a public repo) has two tools: `classify_product` (calls the trained model, contract-wrapped) and `search_similar_products` (RAG over the catalog's text metadata via a local Chroma index). The agent decides on its own which tool a question needs.
 
 **Repository architecture:**
 
 ```
 src/
-  data.py          HF dataset load, resize/transform, stratified split, caching
+  data.py          HF dataset load, resize/transform, stratified split, caching (generic target/attribute columns)
   models.py        BaselineImageModel, MultiModalProductClassifier
-  train.py         python -m src.train --model baseline|proposed --epochs 10
-  evaluate.py      python -m src.evaluate --model baseline|proposed
-  inference.py     shared predict() used by the notebook, the app, and the agent
+  train.py         python -m src.train --model baseline|proposed --seed 0 [--attributes col ...]
+  evaluate.py      python -m src.evaluate --model baseline|proposed --seed 0
+  aggregate.py     mean +/- std across seeds, summed confusion matrices
+  run_all.py       python -m src.run_all --seeds 0 1 2 --epochs 25  (the one-command full experiment)
+  run_ablation.py  attribute-subset sweep
+  contract.py      the output data contract + validator
+  inference.py     shared predict() / predict_with_contract(), used by the app and the agent
   rag.py           Chroma index over product metadata
   agent.py         the tool-calling agent
 notebooks/
-  01_eda.ipynb         class balance, gender x category relationship, image size check
-  02_case_study.ipynb  the narrative version of this README, executed end to end
+  01_eda.ipynb                  v1 EDA (masterCategory) -- see 03_ for the current case study
+  02_case_study.ipynb           v1 narrative (masterCategory) -- kept as an honest historical record
+  03_subcategory_case_study.ipynb   the current case study, executed end to end
+tests/             pytest: data contract schema/bounds, model sanity, regression floors
 artifacts/         metrics, confusion matrices, training curves (checkpoints gitignored)
-app/               Streamlit app — Live Demo, Quality Monitoring, Ask the Catalog
+app/               Reflex app -- Live Demo, Quality Monitoring, Ask the Catalog
 ```
 
 **Running it:**
@@ -85,50 +100,55 @@ app/               Streamlit app — Live Demo, Quality Monitoring, Ask the Cata
 ```bash
 pip install -r requirements.txt
 
-# train + evaluate both models (downloads the dataset on first run)
-python -m src.train --model baseline --epochs 10
-python -m src.train --model proposed --epochs 10
-python -m src.evaluate --model baseline
-python -m src.evaluate --model proposed
+# one command: trains + evaluates both models across 3 seeds, aggregates, exports demo assets
+python -m src.run_all --seeds 0 1 2 --epochs 25
 
-# optional: the local agent needs Ollama running with llama3.1:8b pulled
-ollama pull llama3.1:8b
+# attribute ablation (optional -- already run, see Results)
+python -m src.run_ablation --seeds 0 1 2 --epochs 10
 
-streamlit run app/streamlit_app.py
+pytest                       # data contract + model sanity always run; regression gate needs the run above
+
+ollama pull llama3.1:8b      # the local agent needs Ollama running
+cd app && reflex run         # Live Demo needs the checkpoints from run_all.py to exist locally first
 ```
-
-The Live Demo page needs the checkpoints from `train.py` to exist locally first — there's no hosted model behind this app, by design (see Limitations).
 
 ## Results
 
-| | Baseline (image only) | Proposed (image + gender) |
+| | Baseline (image only) | Proposed (image + attributes) |
 |---|---|---|
-| Accuracy | 95.9% | 95.7% |
-| Macro F1 | 0.802 | 0.779 |
-| Weighted F1 | 0.960 | **0.963** |
-| Auto-tag rate (≥85% confidence) | 92.6% | 91.1% |
+| Accuracy | **93.1% ± 0.03%** | 88.3% ± 0.9% |
+| Macro F1 | **0.854 ± 0.002** | 0.803 ± 0.007 |
+| Weighted F1 | **0.935 ± 0.0001** | 0.897 ± 0.005 |
+| Auto-tag rate (≥85% confidence) | **87.2% ± 0.8%** | 63.4% ± 6.0% |
 
-Read at face value, that's a wash — and a less honest write-up would stop there, or quietly pick whichever metric looked better. The per-class breakdown is where the real story is:
+The baseline wins on every metric, with much lower run-to-run variance — it converges to essentially the same solution every time (std of 0.0001–0.002), while the proposed model is both worse on average and less stable (std up to 6 percentage points on the auto-tag rate). **For this dataset, architecture, and problem grain, the production recommendation is the image-only baseline.**
 
-| Category | Baseline F1 | Proposed F1 | Test support |
-|---|---|---|---|
-| Apparel | 0.978 | 0.981 | 3,204 |
-| Footwear | 0.981 | 0.987 | 1,380 |
-| Accessories | 0.933 | 0.922 | 1,686 |
-| **Personal Care** | **0.862** | **0.925** | 321 |
-| Free Items | 0.258 | 0.081 | 16 |
+### Why the baseline wins
 
-Two things explain the headline numbers:
+This isn't a one-shot result — it survived two follow-up checks before being accepted:
 
-1. **Macro-F1 favors the baseline almost entirely because of "Free Items"** — 16 examples in the test set, ~105 in the whole dataset. Both models are unreliable there; that's a data scarcity problem, not an architecture one. Macro-F1 weights every class equally regardless of support, so this one tiny class swings the average more than it should.
-2. **The proposed model's real, attributable win is Personal Care** (F1 0.925 vs. 0.862, driven by a precision jump from 0.76 to 0.93 — far fewer false positives). This is exactly the category the EDA notebook's gender × category crosstab flagged as having a genuine relationship with gender, before any model was trained. The multi-modal branch earns its keep specifically where the data says it should — not as a blanket improvement everywhere, which is a more credible result than a uniformly clean win would be.
+**1. Attribute ablation.** Maybe a smaller, less noisy attribute set would help. Tested gender-only and gender+season+usage (dropping the high-cardinality `baseColour`) against the full 4-attribute set, 3 seeds each, 10 epochs:
 
-Full confusion matrices, training curves, and the live confidence-threshold breakdown are in `notebooks/02_case_study.ipynb` and the app's Quality Monitoring page.
+| Variant | Accuracy | Macro F1 |
+|---|---|---|
+| Baseline | 0.863 ± 0.017 | 0.786 ± 0.014 |
+| Proposed, all 4 attributes | 0.839 ± 0.022 | 0.743 ± 0.036 |
+| Proposed, gender only | 0.816 ± 0.005 | 0.735 ± 0.020 |
+| Proposed, gender + season + usage | 0.800 ± 0.081 | 0.738 ± 0.069 |
+
+No subset beat the baseline. The gender+season+usage variant was also the least *stable* — one seed collapsed to 68.6% accuracy while the other two reached ~85.8%, a std an order of magnitude higher than the baseline ever shows. Removing `baseColour` didn't fix anything; it just added training instability.
+
+**2. More training time.** Maybe the proposed model — deeper, with an extra branch — just needed longer to converge. Re-ran baseline and the full-attribute proposed model at 25 epochs instead of 10 (numbers in the Results table above). Both models improved with more training, but the baseline improved *more*: the gap widened, and the baseline's variance shrank to near zero while the proposed model's did not. More training time was not the bottleneck.
+
+**3. Per-class breakdown.** The proposed model isn't uniformly worse — a handful of low-support classes (Apparel Set, Makeup, Cufflinks, Ties, Saree) get marginally better F1 (+0.004 to +0.028). But the losses are larger and more numerous: Scarves (-0.276 F1), Headwear (-0.151), Accessories (-0.149), Sandal (-0.149), Free Gifts (-0.135). The attribute branch doesn't add a targeted, explainable lift the way it did at a coarser target grain in an earlier pass at this dataset — here it net-adds optimization noise more often than it adds signal.
+
+**Read on this:** at `subCategory` grain, the photo itself already carries most of the discriminative signal — a clear image of a "Sandal" mostly doesn't need to know the shopper's gender to be classified correctly, and a simple concatenation fusion gives the model no way to learn *when* to ignore a weak or irrelevant attribute. That's a legitimate, useful negative result, not a failed experiment: it tells a real engineering team not to spend the extra training/inference complexity on the attribute branch for this target.
 
 ## Limitations & Next Steps
 
-- **`subCategory` as a harder follow-on target.** `masterCategory` was the right scope for a clean v0 — the gender signal almost certainly matters more at finer granularity (specific article types skew by gender far more than broad categories do).
-- **Two-head multi-task output** (predict `masterCategory` and `subCategory` together) is a natural v1.5, deliberately left out here to keep the baseline-vs-proposed comparison clean.
-- **"Free Items" stays unreliable** for any model trained on this dataset as-is — it needs targeted data collection, not a better architecture.
-- **Checkpoint hosting.** The Live Demo currently requires running `train.py` locally first. Hosting checkpoints as a GitHub Release asset or on the HF Hub would make the demo work on a fresh clone with zero setup.
-- **Confidence calibration.** The 85% auto-tag threshold is a reasonable starting point, not a calibrated one — temperature scaling would make the operational numbers more trustworthy before anyone actually ships a threshold like this.
+- **A gating/attention fusion mechanism** (instead of plain concatenation) might let the model learn to downweight irrelevant attributes per-example rather than always incorporating all 62 dimensions — a more sophisticated next experiment than anything tried here.
+- **`articleType`** (141 raw classes) is an even finer grain where attributes might matter more (a specific article type correlates much more tightly with gender than a broad subcategory does) — untested here; flagged as the natural next step rather than assumed.
+- **Two-head multi-task output** (predict `masterCategory` and `subCategory` together) remains untested.
+- **Checkpoint hosting.** The Live Demo currently requires running `run_all.py` locally first. Hosting checkpoints as a GitHub Release asset or on the HF Hub would make the demo work on a fresh clone with zero setup.
+- **Confidence calibration.** The 85% auto-tag threshold is a reasonable starting point, not a calibrated one — temperature scaling would make the operational numbers more trustworthy before anyone ships a threshold like this.
+- **Regression floors** (`tests/test_regression.py`) are calibrated from one experimental run (mean − 1.5×std per model); a production gate would want more historical runs behind it before being trusted as a real CI check.
