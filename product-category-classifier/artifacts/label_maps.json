@@ -1,0 +1,16 @@
+{
+  "gender_classes": [
+    "Boys",
+    "Girls",
+    "Men",
+    "Unisex",
+    "Women"
+  ],
+  "masterCategory_classes": [
+    "Accessories",
+    "Apparel",
+    "Footwear",
+    "Free Items",
+    "Personal Care"
+  ]
+}

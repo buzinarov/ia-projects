@@ -8,6 +8,7 @@ Background: a few years in analytics and data modeling (segmentation, churn, RFM
 
 Each project gets its own folder with a short write-up: the problem, what I built, why I made the choices I made, and what I'd improve with more time. No filler — just what I'd actually tell you if you asked "walk me through this."
 
+- **[Product Category Classifier](product-category-classifier/)** — multi-modal computer vision (product photo + a structured attribute) benchmarked honestly against an image-only baseline, with a local LLM agent (tool-calling + RAG) and a Streamlit app to demo and monitor it.
 
 ## Why this exists
 

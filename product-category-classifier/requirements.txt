@@ -1,0 +1,9 @@
+torch>=2.11
+torchvision>=0.27
+datasets>=5.0
+scikit-learn>=1.5
+pandas>=2.2
+numpy>=1.26
+pillow>=10.0
+matplotlib>=3.9
+streamlit>=1.51
