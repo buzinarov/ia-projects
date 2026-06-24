@@ -7,7 +7,7 @@ import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
-MODEL_VERSION = "v2-subcategory"  # bump when target/architecture changes meaningfully
+MODEL_VERSION = "subcategory-1.0"  # bump when target/architecture changes meaningfully
 
 
 @dataclass

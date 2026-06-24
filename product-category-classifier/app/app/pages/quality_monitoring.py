@@ -8,6 +8,7 @@ import reflex as rx
 
 from ..backend import ARTIFACTS_DIR, generate_verdict, image_data_uri, load_history, load_metrics_summary
 from ..layout import page
+from src.contract import MODEL_VERSION  # noqa: E402  (backend import above puts the project root on sys.path)
 
 BASELINE_SUMMARY = load_metrics_summary("baseline")
 PROPOSED_SUMMARY = load_metrics_summary("proposed")
@@ -264,7 +265,7 @@ def quality_monitoring() -> rx.Component:
         ),
         rx.divider(),
         rx.hstack(
-            rx.text("Model version: v2-subcategory", size="1", color="gray"),
+            rx.text(f"Model version: {MODEL_VERSION}", size="1", color="gray"),
             rx.text("•", color="gray"),
             rx.text(
                 f"Last trained: {PROPOSED_HISTORY['trained_at'][:19].replace('T', ' ')} UTC"

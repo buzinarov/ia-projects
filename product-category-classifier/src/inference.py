@@ -1,6 +1,6 @@
-"""Shared inference helpers, used by the notebook, evaluate.py, the
-Streamlit app, and the tool-calling agent. Single source of truth for
-"how do we turn an image + structured attributes into a prediction."
+"""Shared inference helpers, used by evaluate.py, the Reflex app, the
+notebooks, and the tool-calling agent. Single source of truth for how
+we turn an image + structured attributes into a prediction.
 """
 from pathlib import Path
 

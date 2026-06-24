@@ -1,5 +1,5 @@
 """Runs the full experiment end to end: train + evaluate both models
-across all seeds, aggregate, then export the Streamlit demo assets.
+across all seeds, aggregate, then export the app's demo assets.
 One command, reproducible -- the "it's automatic" entry point.
 
 Usage:
@@ -31,8 +31,8 @@ def _run(args_list):
 
 def export_demo_assets(maps, device, num_classes, attr_dim, demo_seed, n_samples=24):
     """Bundles a small stratified sample of test images + both models'
-    predictions (at one designated seed), so the Streamlit Live Demo
-    works without the full dataset or a training run."""
+    predictions (at one designated seed), so the app's Live Demo works
+    without the full dataset or a training run."""
     baseline_ckpt = CHECKPOINT_DIR / f"baseline_seed{demo_seed}.pt"
     proposed_ckpt = CHECKPOINT_DIR / f"proposed_seed{demo_seed}.pt"
     if not (baseline_ckpt.exists() and proposed_ckpt.exists()):
@@ -130,7 +130,7 @@ def main():
             f"macro_f1={summary['macro_f1']['mean']:.4f}+/-{summary['macro_f1']['std']:.4f}"
         )
 
-    print("\nExporting Streamlit demo assets...")
+    print("\nExporting demo assets for the app...")
     maps = load_label_maps()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     export_demo_assets(

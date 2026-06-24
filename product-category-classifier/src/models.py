@@ -1,21 +1,21 @@
-"""Model architectures for the product category classifier.
+"""Model architectures.
 
 BaselineImageModel: image-only CNN.
-MultiModalProductClassifier: image + structured attributes (gender,
-baseColour, season, usage), a near 1:1 translation of the multi-input
-pattern (image_layer + type_layer -> concat -> classifier) from the
-original cert exercise this case study is based on, with a deeper
-shared CNN trunk and a wider attribute branch to match the richer
-inputs and finer-grained target used in v2.
+MultiModalProductClassifier: the same image trunk plus a small branch
+for the structured attributes (gender, baseColour, season, usage),
+concatenated before the classifier head.
+
+Both share one image trunk by construction, so the only difference
+between them is whether the attribute branch exists -- which is the
+whole point of the comparison.
 """
 import torch
 import torch.nn as nn
 
 
-def _build_image_trunk(img_size):
-    """Shared CNN trunk -- identical for both models, so the only real
-    difference between baseline and proposed is whether the attribute
-    branch exists, not a stronger image branch on one side."""
+def _build_image_trunk():
+    """Shared CNN trunk, used unchanged by both models so a fair
+    comparison is enforced by code rather than by convention."""
     return nn.Sequential(
         nn.Conv2d(3, 16, kernel_size=3, padding=1),
         nn.BatchNorm2d(16),
@@ -43,7 +43,7 @@ def _trunk_output_dim(img_size):
 class BaselineImageModel(nn.Module):
     def __init__(self, num_classes, img_size=80):
         super().__init__()
-        self.image_layer = _build_image_trunk(img_size)
+        self.image_layer = _build_image_trunk()
         flat_dim = _trunk_output_dim(img_size)
         self.classifier = nn.Sequential(
             nn.Linear(flat_dim, 128),
@@ -61,7 +61,7 @@ class BaselineImageModel(nn.Module):
 class MultiModalProductClassifier(nn.Module):
     def __init__(self, num_classes, attr_dim, img_size=80):
         super().__init__()
-        self.image_layer = _build_image_trunk(img_size)
+        self.image_layer = _build_image_trunk()
         flat_dim = _trunk_output_dim(img_size)
         self.attr_layer = nn.Sequential(
             nn.Linear(attr_dim, 32),

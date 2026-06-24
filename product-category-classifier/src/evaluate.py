@@ -5,7 +5,7 @@ Usage:
     python -m src.evaluate --model baseline --seed 0
     python -m src.evaluate --model proposed --seed 0
 
-Aggregating across seeds and exporting the Streamlit demo assets are
+Aggregating across seeds and exporting the app's demo assets are
 separate steps (src/aggregate.py, src/run_all.py) -- this module's job
 is strictly "evaluate one checkpoint."
 """
