@@ -4,3 +4,4 @@ __pycache__/
 .states
 *.py[cod]
 assets/external/
+uploaded_files/

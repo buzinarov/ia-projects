@@ -16,7 +16,7 @@ import torch
 from PIL import Image
 
 from . import aggregate
-from .data import ATTRIBUTE_COLUMNS, IMG_SIZE, PROCESSED_DIR, load_label_maps
+from .data import ATTRIBUTE_COLUMNS, IMG_SIZE, PROCESSED_DIR, load_filtered_dataset, load_label_maps
 from .evaluate import CHECKPOINT_DIR, load_checkpoint
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +48,9 @@ def export_demo_assets(maps, device, num_classes, attr_dim, demo_seed, n_samples
     images = np.load(PROCESSED_DIR / f"images_{IMG_SIZE}.npy")
     label_idx_arr = np.load(PROCESSED_DIR / f"{maps['target_column'].lower()}.npy")
     attr_idx_arrs = {col: np.load(PROCESSED_DIR / f"{col.lower()}.npy") for col in ATTRIBUTE_COLUMNS}
+
+    print("Looking up product names for the sampled rows...")
+    product_names = load_filtered_dataset(extra_columns=("productDisplayName",))["productDisplayName"]
 
     rng = np.random.default_rng(42)
     per_class = max(1, n_samples // num_classes)
@@ -84,6 +87,7 @@ def export_demo_assets(maps, device, num_classes, attr_dim, demo_seed, n_samples
             entry = {
                 "id": int(i),
                 "filename": filename,
+                "product_name": product_names[i] or f"Product #{i}",
                 "true_category": class_names[label_idx_arr[i]],
                 **{f"true_{col}": true_attrs[col] for col in ATTRIBUTE_COLUMNS},
             }

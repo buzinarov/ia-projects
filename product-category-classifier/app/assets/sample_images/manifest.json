@@ -2,6 +2,7 @@
   {
     "id": 3700,
     "filename": "sample_3700.png",
+    "product_name": "Reid & Taylor Men Formal Black Tie+Cufflink+Pocket square - Combo Pack",
     "true_category": "Accessories",
     "true_gender": "Men",
     "true_baseColour": "Black",
@@ -15,6 +16,7 @@
   {
     "id": 30263,
     "filename": "sample_30263.png",
+    "product_name": "Biba Women Cream-Coloured Embroidered Churidar Kurta with Dupatta",
     "true_category": "Apparel Set",
     "true_gender": "Women",
     "true_baseColour": "Cream",
@@ -28,6 +30,7 @@
   {
     "id": 28192,
     "filename": "sample_28192.png",
+    "product_name": "Rocia Women Black Clutch",
     "true_category": "Bags",
     "true_gender": "Women",
     "true_baseColour": "Black",
@@ -41,6 +44,7 @@
   {
     "id": 19523,
     "filename": "sample_19523.png",
+    "product_name": "Bulchee Men Plain Jeans Black Belt",
     "true_category": "Belts",
     "true_gender": "Men",
     "true_baseColour": "Black",
@@ -54,6 +58,7 @@
   {
     "id": 18174,
     "filename": "sample_18174.png",
+    "product_name": "Doodle Kids Boy Striped Blue Shorts",
     "true_category": "Bottomwear",
     "true_gender": "Men",
     "true_baseColour": "Blue",
@@ -67,6 +72,7 @@
   {
     "id": 34120,
     "filename": "sample_34120.png",
+    "product_name": "Belmonte Men Golden Bright Assorted Cufflinks",
     "true_category": "Cufflinks",
     "true_gender": "Men",
     "true_baseColour": "Gold",
@@ -80,6 +86,7 @@
   {
     "id": 3734,
     "filename": "sample_3734.png",
+    "product_name": "Gini and Jony Girls White Dress",
     "true_category": "Dress",
     "true_gender": "Girls",
     "true_baseColour": "White",
@@ -93,6 +100,7 @@
   {
     "id": 30976,
     "filename": "sample_30976.png",
+    "product_name": "Idee Men Copper Sunglasses",
     "true_category": "Eyewear",
     "true_gender": "Men",
     "true_baseColour": "Copper",
@@ -106,6 +114,7 @@
   {
     "id": 8189,
     "filename": "sample_8189.png",
+    "product_name": "iPanema Women Black Flip Flops",
     "true_category": "Flip Flops",
     "true_gender": "Women",
     "true_baseColour": "Black",
@@ -119,6 +128,7 @@
   {
     "id": 3635,
     "filename": "sample_3635.png",
+    "product_name": "Nike Fragrances Women Free Soul Perfume 150 ml",
     "true_category": "Fragrance",
     "true_gender": "Women",
     "true_baseColour": "White",
@@ -132,6 +142,7 @@
   {
     "id": 24694,
     "filename": "sample_24694.png",
+    "product_name": "Maxima Men Scuba Digital Watch",
     "true_category": "Free Gifts",
     "true_gender": "Men",
     "true_baseColour": "Black",
@@ -145,6 +156,7 @@
   {
     "id": 42400,
     "filename": "sample_42400.png",
+    "product_name": "Lee Men Olive Cap",
     "true_category": "Headwear",
     "true_gender": "Men",
     "true_baseColour": "Olive",
@@ -158,6 +170,7 @@
   {
     "id": 32209,
     "filename": "sample_32209.png",
+    "product_name": "Enamor Women Pack of 2 Briefs",
     "true_category": "Innerwear",
     "true_gender": "Women",
     "true_baseColour": "Black",
@@ -171,6 +184,7 @@
   {
     "id": 32574,
     "filename": "sample_32574.png",
+    "product_name": "Lucera Women Silver Earrings",
     "true_category": "Jewellery",
     "true_gender": "Women",
     "true_baseColour": "Silver",
@@ -184,6 +198,7 @@
   {
     "id": 31137,
     "filename": "sample_31137.png",
+    "product_name": "Streetwear Satin Smooth Fruity Fawn Lipcolor 25",
     "true_category": "Lips",
     "true_gender": "Women",
     "true_baseColour": "Brown",
@@ -197,6 +212,7 @@
   {
     "id": 34560,
     "filename": "sample_34560.png",
+    "product_name": "Inaya Women Brown Lounge Shorts",
     "true_category": "Loungewear and Nightwear",
     "true_gender": "Women",
     "true_baseColour": "Brown",
@@ -210,6 +226,7 @@
   {
     "id": 22017,
     "filename": "sample_22017.png",
+    "product_name": "Streetwear Stay On Mineral Peppy Apricot Blusher",
     "true_category": "Makeup",
     "true_gender": "Women",
     "true_baseColour": "Peach",
@@ -223,6 +240,7 @@
   {
     "id": 7217,
     "filename": "sample_7217.png",
+    "product_name": "Lakme Absolute Fast & Fabulous Wicked Pink Nail Polish 22",
     "true_category": "Nails",
     "true_gender": "Women",
     "true_baseColour": "Pink",
@@ -236,6 +254,7 @@
   {
     "id": 38136,
     "filename": "sample_38136.png",
+    "product_name": "Red Tape Men Brown Sandals",
     "true_category": "Sandal",
     "true_gender": "Men",
     "true_baseColour": "Brown",
@@ -249,6 +268,7 @@
   {
     "id": 17824,
     "filename": "sample_17824.png",
+    "product_name": "Prafful Navy Blue Crepe Printed Sari",
     "true_category": "Saree",
     "true_gender": "Women",
     "true_baseColour": "Navy Blue",
@@ -262,6 +282,7 @@
   {
     "id": 22399,
     "filename": "sample_22399.png",
+    "product_name": "Arrow Men Black Striped Scarf",
     "true_category": "Scarves",
     "true_gender": "Men",
     "true_baseColour": "Black",
@@ -275,6 +296,7 @@
   {
     "id": 16515,
     "filename": "sample_16515.png",
+    "product_name": "Catwalk Women Blue Wedges",
     "true_category": "Shoes",
     "true_gender": "Women",
     "true_baseColour": "Blue",
@@ -288,6 +310,7 @@
   {
     "id": 8301,
     "filename": "sample_8301.png",
+    "product_name": "Fila Men Navy Blue Socks",
     "true_category": "Socks",
     "true_gender": "Men",
     "true_baseColour": "Navy Blue",
@@ -301,6 +324,7 @@
   {
     "id": 40525,
     "filename": "sample_40525.png",
+    "product_name": "Reid & Taylor Men Cream Tie",
     "true_category": "Ties",
     "true_gender": "Men",
     "true_baseColour": "Cream",
@@ -314,6 +338,7 @@
   {
     "id": 34090,
     "filename": "sample_34090.png",
+    "product_name": "Wrangler Men Falcon Navy Sweatshirt",
     "true_category": "Topwear",
     "true_gender": "Men",
     "true_baseColour": "Navy Blue",
@@ -327,6 +352,7 @@
   {
     "id": 28829,
     "filename": "sample_28829.png",
+    "product_name": "ToniQ Women Light Brown Wallet",
     "true_category": "Wallets",
     "true_gender": "Women",
     "true_baseColour": "Brown",
@@ -340,6 +366,7 @@
   {
     "id": 18164,
     "filename": "sample_18164.png",
+    "product_name": "Q&Q Kids Unisex Purple Dial Watch",
     "true_category": "Watches",
     "true_gender": "Unisex",
     "true_baseColour": "Purple",

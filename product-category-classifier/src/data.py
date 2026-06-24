@@ -81,6 +81,24 @@ def load_label_maps():
     return json.loads(LABEL_MAP_PATH.read_text())
 
 
+def load_filtered_dataset(extra_columns=()):
+    """Loads the HF dataset and applies the exact same null/rare-class
+    filtering as prepare_dataset(), so row position `i` here lines up
+    with position `i` in the cached arrays. Used to look up auxiliary
+    fields (e.g. productDisplayName) for already-cached samples without
+    needing to bake them into the image cache."""
+    from datasets import load_dataset
+
+    ds = load_dataset(HF_DATASET, split="train")
+    keep_cols = {"image", TARGET_COLUMN, *ATTRIBUTE_COLUMNS, *extra_columns}
+    ds = ds.select_columns(list(keep_cols))
+
+    required_cols = [TARGET_COLUMN, *ATTRIBUTE_COLUMNS]
+    ds = ds.filter(lambda row: all(row[c] is not None for c in required_cols))
+    ds = _filter_rare_classes(ds, TARGET_COLUMN, MIN_CLASS_COUNT)
+    return ds
+
+
 def prepare_dataset(force_rebuild=False):
     """Download (if needed), filter, resize, and cache the dataset to disk.
 
@@ -91,17 +109,8 @@ def prepare_dataset(force_rebuild=False):
     if not force_rebuild and IMAGES_CACHE.exists() and LABEL_MAP_PATH.exists():
         return
 
-    from datasets import load_dataset
-
     print(f"Loading {HF_DATASET} from the Hugging Face Hub (cached after first run)...")
-    ds = load_dataset(HF_DATASET, split="train")
-
-    keep_cols = {"image", TARGET_COLUMN, *ATTRIBUTE_COLUMNS}
-    ds = ds.select_columns(list(keep_cols))
-
-    required_cols = [TARGET_COLUMN, *ATTRIBUTE_COLUMNS]
-    ds = ds.filter(lambda row: all(row[c] is not None for c in required_cols))
-    ds = _filter_rare_classes(ds, TARGET_COLUMN, MIN_CLASS_COUNT)
+    ds = load_filtered_dataset()
 
     target_values = ds[TARGET_COLUMN]
     attr_value_lists = {col: ds[col] for col in ATTRIBUTE_COLUMNS}

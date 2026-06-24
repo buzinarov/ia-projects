@@ -39,6 +39,9 @@ class LiveDemoState(rx.State):
         if self.selected_filename:
             self.select_sample(self.selected_filename)
 
+    def set_mode(self, mode: str):
+        self.mode = mode
+
     def select_sample(self, filename: str):
         self.mode = "sample"
         self.selected_filename = filename
@@ -145,8 +148,11 @@ def _attribute_controls() -> rx.Component:
 
 
 def _sample_picker() -> rx.Component:
-    return rx.select(
-        [m["filename"] for m in MANIFEST],
+    return rx.select.root(
+        rx.select.trigger(width="100%"),
+        rx.select.content(
+            *[rx.select.item(m["product_name"], value=m["filename"]) for m in MANIFEST]
+        ),
         value=LiveDemoState.selected_filename,
         on_change=LiveDemoState.select_sample,
         width="100%",
@@ -185,6 +191,7 @@ def live_demo() -> rx.Component:
                             padding_top="0.75em",
                         ),
                         value=LiveDemoState.mode,
+                        on_change=LiveDemoState.set_mode,
                         width="100%",
                     ),
                     rx.cond(
