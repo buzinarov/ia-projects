@@ -177,14 +177,27 @@ def live_demo() -> rx.Component:
                         ),
                         rx.tabs.content(_sample_picker(), value="sample", padding_top="0.75em"),
                         rx.tabs.content(
-                            rx.upload(
-                                rx.text("Drag and drop or click to upload"),
-                                id="upload1",
-                                accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
-                                max_files=1,
-                                on_drop=LiveDemoState.handle_upload(rx.upload_files(upload_id="upload1")),
-                                border="1px dashed var(--gray-7)",
-                                padding="2em",
+                            rx.vstack(
+                                rx.upload(
+                                    rx.text("Drag and drop or click to upload"),
+                                    id="upload1",
+                                    accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
+                                    max_files=1,
+                                    on_drop=LiveDemoState.handle_upload(rx.upload_files(upload_id="upload1")),
+                                    border="1px dashed var(--gray-7)",
+                                    padding="2em",
+                                    width="100%",
+                                ),
+                                rx.callout(
+                                    "Trained on catalog-style product photos (plain background, "
+                                    "fixed framing). Photos shot differently -- different angle, "
+                                    "lighting, or background -- may get a confidently wrong answer, "
+                                    "not just a low-confidence one.",
+                                    icon="triangle_alert",
+                                    color_scheme="amber",
+                                    size="1",
+                                ),
+                                spacing="3",
                                 width="100%",
                             ),
                             value="upload",
