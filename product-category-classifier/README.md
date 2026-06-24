@@ -1,8 +1,8 @@
 # Product Category Classifier
 
+[![CI](https://github.com/buzinarov/ia-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/buzinarov/ia-projects/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
-![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen.svg)
 
 A multi-modal computer vision case study, built around a real enterprise scenario and evaluated with the kind of rigor you'd want before shipping — multiple training seeds, a held-out test set, automated tests, and a data contract. A local LLM agent sits on top so the trained model is something you can actually talk to, not just a number in a notebook.
 
