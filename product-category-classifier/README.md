@@ -1,8 +1,16 @@
 # Product Category Classifier
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
+![Python](https://img.shields.io/badge/python-3.11-blue.svg)
+![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen.svg)
+
 A multi-modal computer vision case study, built around a real enterprise scenario and evaluated with the kind of rigor you'd want before shipping — multiple training seeds, a held-out test set, automated tests, and a data contract. A local LLM agent sits on top so the trained model is something you can actually talk to, not just a number in a notebook.
 
 **The short version:** I tested whether adding a product's structured attributes (gender, color, season, usage) to its photo improves classification over a photo-only model. It doesn't — the image-only baseline wins on every metric, and I show *why* rather than quietly dropping the result. The honest negative is the interesting part.
+
+![Quality Monitoring dashboard](docs/screenshot_quality_top.png)
+
+> The Reflex app's Quality Monitoring view — a plain-language verdict generated from the actual numbers, headline metrics with run-to-run variance, and the operational "auto-tag rate" a catalog team would care about.
 
 ## Objective
 
@@ -44,32 +52,17 @@ Both train identically: same preprocessing, same 70/15/15 stratified split, same
 
 **Model** (`src/models.py` — both models share one image trunk, so the comparison stays fair by construction):
 
-```
-BaselineImageModel:                       MultiModalProductClassifier:
-  image (3x80x80)                           image (3x80x80)         attrs (one-hot, 62)
-       |                                          |                          |
-  [Conv-BN-ReLU-Pool] x3                     [Conv-BN-ReLU-Pool] x3          |
-       |                                          |                    Linear -> ReLU -> Dropout
-  Flatten -> Linear(128) -> Dropout           Flatten -> Linear(128)         |
-       |                                          \_________________ concat
-  Linear -> num_classes                                    |
-                                                   Linear -> ReLU -> Dropout -> Linear -> num_classes
-```
+![Model architecture](docs/model_architecture.png)
 
-**Product** — how the pieces fit end to end:
+**System** — how the pieces fit from trained model to a working product:
 
-```
-Product photo ──┐
-                 ├──► CNN image branch ──┐
-Attributes ──────┘    + MLP branch ──────┼──► Classifier ──► Subcategory
-                                          │
-Trained checkpoints ─────────────────────┼──► classify_product (tool, contract-wrapped)
-Catalog metadata ──► Chroma index ───────┼──► search_similar_products (tool)
-                                          │
-                              Local LLM (Ollama, llama3.1:8b) ──► Chat
-```
+![System architecture](docs/system_architecture.png)
 
 A **data contract** (`src/contract.py`) pins the output schema downstream consumers depend on — `product_id`, `predicted_subcategory`, `confidence`, `model_name`, `model_version`, `predicted_at` — with `validate_prediction_record()` raising on a malformed record instead of letting it through. A small local agent (Ollama — no external API, no keys, nothing that can leak from a public repo) has two tools: `classify_product` (the trained model, contract-wrapped) and `search_similar_products` (RAG over catalog metadata via a local Chroma index). The agent picks the tool a question needs.
+
+The app's **Live Demo** runs both models side by side on any catalog sample or an uploaded photo:
+
+![Live Demo](docs/screenshot_live_demo.png)
 
 **Repository:**
 
@@ -92,6 +85,7 @@ notebooks/
 tests/             pytest: data-contract schema/bounds, model sanity, metric-regression floors
 app/               Reflex app — Live Demo, Quality Monitoring, Ask the Catalog
 artifacts/         aggregated metrics, confusion matrices, training history (checkpoints gitignored)
+docs/              architecture diagrams (rendered by make_diagrams.py) and app screenshots
 ```
 
 **Running it:**
