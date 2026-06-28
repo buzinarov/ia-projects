@@ -1,8 +1,8 @@
-"""Regression gate: fails if a retrain drops quality below an explicit
-floor. Floors are set from the first real `run_all` execution (roughly
-mean - 1.5*std), not guessed -- see README for how/when they were set.
-Skips entirely if aggregated metrics aren't present locally (gitignored
-checkpoints mean a bare clone has none until `run_all` is executed).
+"""Regression gate for the recommender's image signal: fails if a retrain
+drops the vision model's quality below an explicit floor. Floors are set
+from the first real `run_all` execution (roughly mean - 1.5*std), not
+guessed. Skips entirely if aggregated metrics aren't present locally
+(gitignored checkpoints mean a bare clone has none until `run_all` runs).
 """
 import json
 from pathlib import Path
@@ -16,11 +16,10 @@ ARTIFACTS_DIR = Path(__file__).resolve().parent.parent / "artifacts"
 # proposed accuracy 0.883 +/- 0.009, macro_f1 0.803 +/- 0.007.
 # Floors = mean - 1.5*std, rounded down for margin (baseline's std is
 # tiny across only 3 seeds, so its floor is rounded down more generously
-# than the formula alone would give). The proposed model still trails
-# the baseline (see README) -- these gates protect each model from
-# regressing further; they don't claim the proposed model is the
-# better choice between the two. Baseline is the production
-# recommendation.
+# than the formula alone would give). The image-only baseline is the
+# signal the recommender ships; the proposed variant trails it (see the
+# README appendix). These gates protect each model from regressing
+# further; they don't claim the proposed variant is the better choice.
 BASELINE_ACCURACY_FLOOR = 0.92
 BASELINE_MACRO_F1_FLOOR = 0.84
 PROPOSED_ACCURACY_FLOOR = 0.86

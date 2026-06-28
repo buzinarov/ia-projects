@@ -39,6 +39,55 @@ def _arrow(ax, p1, p2, color=MUTED):
     ))
 
 
+def data_product_overview():
+    """One-glance overview: the four data-product lifecycle pillars across
+    the top, and the recommender's query -> signals -> ranking flow below.
+    The headline diagram for a recruiter skimming the README."""
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+
+    ax.text(6, 5.7, "Multi-modal product recommender — data-product lifecycle",
+            ha="center", fontsize=13, weight="bold", color=INK)
+
+    pillars = [
+        (1.65, IMG_BLUE, "#eaf0f8", "1. Descriptive", "Catalog EDA +\npopularity baseline"),
+        (4.55, ATTR_ORANGE, "#fbeee3", "2. Diagnostic", "Why popularity is\ngeneric, category-blind"),
+        (7.45, HEAD_GREEN, "#eaf3ec", "3. Predictive", "Hybrid: image signal\n+ metadata similarity"),
+        (10.35, TOOL_PURPLE, "#f0edf6", "4. Prescriptive", "Ship + OKRs,\nvalidate via A/B test"),
+    ]
+    for cx, edge, fill, header, body in pillars:
+        ax.add_patch(FancyBboxPatch(
+            (cx - 1.3, 4.1), 2.6, 1.15,
+            boxstyle="round,pad=0.02,rounding_size=0.08",
+            linewidth=1.6, edgecolor=edge, facecolor=fill, zorder=2,
+        ))
+        ax.text(cx, 4.92, header, ha="center", va="center", fontsize=10.5, weight="bold", color=INK, zorder=3)
+        ax.text(cx, 4.45, body, ha="center", va="center", fontsize=9, color=MUTED, zorder=3)
+    for cx in (3.0, 5.9, 8.8):
+        _arrow(ax, (cx, 4.67), (cx + 0.2, 4.67))
+
+    # Flow band
+    _box(ax, 1.7, 2.5, 2.7, 0.95, "Query\nphoto or description", IMG_BLUE, fc="#eaf0f8", fontsize=9.5)
+    _box(ax, 6.0, 2.5, 3.6, 0.95,
+         "Image signal -> subcategory\n+ similarity (MiniLM, cosine)", HEAD_GREEN, fc="#eaf3ec", fontsize=9.5)
+    _box(ax, 10.3, 2.5, 2.7, 0.95, "Ranked\nrecommendations", TOOL_PURPLE, fc="#f0edf6", fontsize=9.5)
+    _arrow(ax, (3.05, 2.5), (4.2, 2.5))
+    _arrow(ax, (7.8, 2.5), (8.95, 2.5))
+
+    ax.text(6, 0.95,
+            "Offline result vs. popularity baseline:  precision@5  0.33 -> 0.90     NDCG@5  0.32 -> 0.91",
+            ha="center", fontsize=10.5, weight="bold", color=INK)
+    ax.text(6, 0.45,
+            "Relevance is a content-based proxy (articleType + gender) — no user-interaction data; revenue/engagement are motivation, not measured.",
+            ha="center", fontsize=8, style="italic", color=MUTED)
+
+    fig.tight_layout()
+    fig.savefig(DOCS / "project_pipeline.png", dpi=200, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def model_architecture():
     fig, ax = plt.subplots(figsize=(11, 6.2))
     ax.set_xlim(0, 11)
@@ -119,7 +168,7 @@ def system_architecture():
     _arrow(ax, (8.4, 1.3), (7.2, 3.275))        # search tool -> agent
     ax.text(6.65, 2.55, "Chat", ha="center", fontsize=9.5, color=MUTED)
 
-    ax.text(5.5, 5.05, "From trained model to something you can talk to",
+    ax.text(5.5, 5.05, "From a photo or a description to product recommendations",
             ha="center", fontsize=12.5, weight="bold", color=INK)
     ax.text(5.5, 0.35, "No external API calls — the agent runs entirely against a local model.",
             ha="center", fontsize=9.5, style="italic", color=MUTED)
@@ -130,6 +179,7 @@ def system_architecture():
 
 
 if __name__ == "__main__":
+    data_product_overview()
     model_architecture()
     system_architecture()
-    print(f"Wrote model_architecture.png and system_architecture.png to {DOCS}")
+    print(f"Wrote project_pipeline.png, model_architecture.png and system_architecture.png to {DOCS}")

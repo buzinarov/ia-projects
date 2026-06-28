@@ -1,14 +1,20 @@
-"""A small local tool-calling agent, served by Ollama (no external API,
-no API key -- keeps this safe to run from a public repo).
+"""The local tool-calling agent behind the suggested-product surface,
+served by Ollama (no external API, no API key -- keeps this safe to run
+from a public repo).
 
-Two tools:
-  - classify_product: calls our trained vision model on an image + the
-    product's structured attributes (gender, baseColour, season, usage)
-  - search_similar_products: RAG lookup over the product catalog (src/rag.py)
+It powers the two interaction modes the recommender supports: a user can
+describe what they want in natural language, or attach a product photo.
+The agent orchestrates two tools to turn either into recommendations:
 
-The agent decides which tool(s) to call based on the user's message;
-this module just wires the tool-calling loop, it doesn't hardcode when
-to search vs. classify.
+  - classify_product: runs the trained vision model on a product photo to
+    predict its subcategory -- the image-classification signal.
+  - search_similar_products: retrieves similar catalog items by
+    description (RAG, src/rag.py), optionally filtered to a category --
+    the metadata-similarity signal. Combining the two (classify, then
+    search within the predicted category) is the recommendation flow.
+
+The agent decides which tool(s) a message needs; this module just wires
+the tool-calling loop, it doesn't hardcode when to search vs. classify.
 """
 import json
 
@@ -20,26 +26,57 @@ from .inference import load_model, predict_with_contract
 from .rag import search_similar_products
 
 MODEL_NAME = "llama3.1:8b"
-VISION_MODEL = "proposed"  # the model we'd actually ship
+# The image signal comes from the image-only baseline -- the model the
+# classification study found wins on every metric, so it's what the
+# recommender ships (see docs/requirement.md).
+VISION_MODEL = "baseline"
 VISION_MODEL_SEED = 0  # the seed whose checkpoint backs the agent's classify_product tool
 
-SYSTEM_PROMPT = (
-    "You are a helpful shopping assistant for an online fashion catalog. "
-    "You have two tools: `classify_product`, which runs a trained vision "
-    "model on a product photo plus its structured attributes (gender, "
-    "baseColour, season, usage) to predict its subcategory, and "
-    "`search_similar_products`, which searches the catalog by description. "
-    "Use them when they would help answer the user, and explain your "
-    "reasoning briefly in plain language. Don't make up product details "
-    "that didn't come from a tool result.\n\n"
-    "Only call `classify_product` if the user's message explicitly includes "
-    "an attached image path and its attributes (look for a line like "
-    "'[Attached product image path: ... | attributes: gender=..., "
-    "baseColour=..., season=..., usage=...]'). Never invent, guess, or use "
-    "placeholder values for the image path or any attribute. If the user "
-    "asks you to classify a product but no image is attached, tell them to "
-    "upload or select one first instead of calling the tool."
-)
+SYSTEM_PROMPT = """\
+# Role
+You are the recommendation assistant behind an online fashion catalog's
+"suggested products" surface. Your single objective is to put the most relevant
+catalog items in front of the shopper, grounding every suggestion in tool
+results -- never in assumed product knowledge.
+
+# Tools
+- `classify_product(image_path, gender, baseColour, season, usage)` -> predicts a
+  photographed product's subcategory with a trained vision model. The image
+  signal.
+- `search_similar_products(query, n_results, category?)` -> retrieves catalog
+  items by semantic similarity to a free-text description, optionally restricted
+  to one subcategory. The metadata-similarity signal.
+
+# Tool-use policy
+Decide from the user's input which path to take:
+1. The user DESCRIBES what they want (text only) -> call `search_similar_products`
+   with their description as `query`. Leave `category` unset unless the user
+   names a specific subcategory.
+2. The user ATTACHES a photo -> call `classify_product` first, then
+   `search_similar_products` with the predicted subcategory as `category`, so the
+   recommendations stay within the photographed item's category. This two-step
+   chain is how the image and similarity signals combine.
+3. The user asks a question a tool cannot answer (store policy, sizing advice,
+   etc.) -> answer directly, without a tool, and say what you can and cannot help
+   with.
+
+# Guardrails
+- Only call `classify_product` when the message explicitly carries an attached
+  image, shown as a line like:
+  `[Attached product image path: ... | attributes: gender=..., baseColour=...,
+  season=..., usage=...]`. Never invent, guess, or use placeholder values for the
+  image path or any attribute. If the user refers to a photo but none is attached,
+  ask them to upload or select one first instead of calling the tool.
+- Recommend only items returned by a tool. Do not invent product names, prices,
+  availability, or attributes that no tool returned.
+- If a tool returns nothing useful, say so plainly and offer to refine the search
+  rather than fabricating a result.
+
+# Response style
+Lead with the recommendations. Keep any explanation of your reasoning to one or
+two plain-language sentences. Be concise and concrete; do not narrate your tool
+calls step by step.
+"""
 
 _label_maps_cache = {}
 _vision_model_cache = {}
@@ -89,12 +126,21 @@ def _build_tools(maps):
             "type": "function",
             "function": {
                 "name": "search_similar_products",
-                "description": "Search the product catalog for items matching a free-text description.",
+                "description": (
+                    "Recommend catalog items matching a free-text description. Optionally "
+                    "restrict results to a category (subcategory) -- pass the subcategory "
+                    "from classify_product here to recommend within a photographed item's category."
+                ),
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {"type": "string", "description": "Natural language description of what to find"},
                         "n_results": {"type": "integer", "description": "How many matches to return", "default": 5},
+                        "category": {
+                            "type": "string",
+                            "description": "Optional subcategory to restrict results to",
+                            "enum": maps["target_classes"],
+                        },
                     },
                     "required": ["query"],
                 },
@@ -117,8 +163,8 @@ def _run_classify_product(image_path, **attrs):
     return record
 
 
-def _run_search_similar_products(query, n_results=5):
-    return search_similar_products(query, n_results=int(n_results))
+def _run_search_similar_products(query, n_results=5, category=None):
+    return search_similar_products(query, n_results=int(n_results), category=category)
 
 
 def _execute_tool_call(name, arguments):

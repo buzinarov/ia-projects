@@ -1,13 +1,14 @@
-"""Model architectures.
+"""Model architectures for the recommender's image signal.
 
-BaselineImageModel: image-only CNN.
+BaselineImageModel: image-only CNN -- the variant that ships, whose
+predicted subcategory feeds the recommender.
 MultiModalProductClassifier: the same image trunk plus a small branch
 for the structured attributes (gender, baseColour, season, usage),
-concatenated before the classifier head.
+concatenated before the classifier head -- kept for the classification
+appendix.
 
 Both share one image trunk by construction, so the only difference
-between them is whether the attribute branch exists -- which is the
-whole point of the comparison.
+between them is whether the attribute branch exists.
 """
 import torch
 import torch.nn as nn

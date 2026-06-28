@@ -1,91 +1,200 @@
-# Product Category Classifier
+# Multi-Modal Product Recommender
 
 [![CI](https://github.com/buzinarov/ia-projects/actions/workflows/ci.yml/badge.svg)](https://github.com/buzinarov/ia-projects/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11-blue.svg)
 
-A multi-modal computer vision case study, built around a real enterprise scenario and evaluated with the kind of rigor you'd want before shipping — multiple training seeds, a held-out test set, automated tests, and a data contract. A local LLM agent sits on top so the trained model is something you can actually talk to, not just a number in a notebook.
+A data-product case study: replacing a naive *suggested-product* recommender
+with a multi-modal one that combines an **image-classification signal** with a
+**metadata-similarity signal**, reachable either by attaching a product photo or
+by describing the item to a local AI agent. It is framed and evaluated the way a
+real initiative would be — three collaborating personas, a baseline to beat, a
+fixed acceptance bar set before any numbers existed, and an honesty boundary
+about what this dataset can and cannot prove.
 
-**The short version:** I tested whether adding a product's structured attributes (gender, color, season, usage) to its photo improves classification over a photo-only model. It doesn't — the image-only baseline wins on every metric, and I show *why* rather than quietly dropping the result. The honest negative is the interesting part.
+**In short:** the proposed hybrid beats the popularity baseline by a clear,
+defensible margin on offline ranking metrics (precision@5 **0.33 → 0.90**,
+NDCG@5 **0.32 → 0.91**). The improvement is deliberately not presented as a
+revenue lift: this catalog has no user-interaction data, so revenue and
+engagement serve as the motivation for the work rather than as measured outcomes
+— a distinction the project keeps throughout.
 
-![Quality Monitoring dashboard](docs/screenshot_quality_top.png)
+> This project began as a product-category **classifier**. That classifier is
+> now a component (the image signal), and the original "do attributes help
+> classification?" study is retained as a documented [appendix](#appendix-the-classification-sub-experiment).
+> The full kickoff contract lives in [`docs/requirement.md`](docs/requirement.md).
 
-> The Reflex app's Quality Monitoring view — a plain-language verdict generated from the actual numbers, headline metrics with run-to-run variance, and the operational "auto-tag rate" a catalog team would care about.
+![Data-product overview](docs/project_pipeline.png)
+
+## The four pillars of the data-product lifecycle
+
+The work is framed against the standard Descriptive → Diagnostic → Predictive →
+Prescriptive lifecycle, so it is a product with a rationale and a recommended
+action, not just a model:
+
+| Pillar | Question | In this product |
+|---|---|---|
+| **Descriptive** — *where we are* | What do the catalog and the baseline look like? | Catalog EDA (`notebooks/01_eda.ipynb`); the popularity-by-category baseline |
+| **Diagnostic** — *why we are there* | Why do the baseline's suggestions underperform? | It ranks by category popularity alone — category-correct, but blind to the specific item |
+| **Predictive** — *what is going to happen* | What will the new model recommend? | The hybrid recommender (image classification + metadata similarity, via the agent) |
+| **Prescriptive** — *what we should do* | What action follows? | A ship/no-ship recommendation and the OKRs it implies |
+
+## Personas
+
+The requirement reflects agreements between three roles, not one function's wish list.
+
+| Persona | Owns | Cares most about |
+|---|---|---|
+| **Product Manager** | Scope, success criteria, sequencing | A measurable, shippable improvement and a clear "done" |
+| **Commercial Stakeholder** | The business case for the suggested-product feature | Revenue and engagement on the recommendation surface |
+| **Senior AI Engineer** | Model design, evaluation rigor, the data contract | Defensible metrics, honest baselines, reproducibility |
 
 ## Objective
 
-**The scenario.** An e-commerce company gets new products every month and needs each one classified against a fixed schema before it can feed downstream ML models and executive/operational reports. Hand-labeling doesn't scale, so the goal is an automated classifier with a real reliability bar: a fixed output contract, automated tests, and a quality view that an engineer *and* an operations manager can both read.
+**The scenario.** The storefront runs a *suggested-product* feature powered by a
+**simple recommender already in production**: it surfaces the most popular items
+within a product category (popularity-by-category — common as a first system
+because it is trivial to ship and needs no training). The **Commercial
+Stakeholder** finds its suggestions generic and category-obvious, and the
+revenue/engagement KPIs on that surface are flat. They convened the **Product
+Manager** and the **Senior AI Engineer** to agree on a replacement, developed
+with an AI assistant in the loop.
 
-**The technical question.** Multi-modal models — combining an image with structured fields — are a standard pitch. But "more inputs must help" is an assumption worth testing, not asserting. So: does feeding the model the product's attributes *alongside* the photo beat a model that only sees the photo?
+**The honesty boundary.** Revenue and engagement are the *motivation* for this
+initiative — not a measured outcome. This dataset is a **static catalog** with
+**no user-interaction data** (no clicks, purchases, sessions, or ratings), so a
+revenue or engagement lift cannot be measured honestly, and fabricating synthetic
+interactions to claim one would be misleading. The boundary is therefore explicit:
 
-**The answer, here, is no** — and that's the finding, not a footnote. The image-only baseline beats the multi-modal model across 3 seeds, and it keeps winning after I check whether more training time or a smaller attribute set closes the gap. The [production recommendation](#results) reflects that.
+- **Motivation (narrative only):** revenue and engagement.
+- **Measured success (only from existing data):** offline ranking quality —
+  **precision@k, recall@k, NDCG@k** — against a content-based relevance *proxy*,
+  labeled as a proxy wherever it appears.
 
-The underlying multi-input pattern (an image branch and a categorical branch concatenated into a shared classifier) is one I first built for a DataCamp AI Engineer certification exercise. The pattern transfers; the dataset, the problem framing, the experimental rigor, and the agent/contract layer are my own.
+**The acceptance bar**, fixed in the kickoff before any numbers existed: the new
+model must beat the popularity baseline on those offline metrics.
 
 ## The Data
 
-[Fashion Product Images (Small)](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small), via the public Hugging Face mirror [`ashraq/fashion-product-images-small`](https://huggingface.co/datasets/ashraq/fashion-product-images-small) — public, no auth, loads straight through the `datasets` library.
+[Fashion Product Images (Small)](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-small),
+via the public Hugging Face mirror [`ashraq/fashion-product-images-small`](https://huggingface.co/datasets/ashraq/fashion-product-images-small)
+— public, no auth, loads straight through the `datasets` library.
 
 - **44,072 product photos** with structured metadata.
-- **Image:** resized to 80×80 RGB (the EDA notebook walks through why this size).
-- **Structured attributes (the second modality):** `gender`, `baseColour`, `season`, `usage`, concatenated into a 62-dim one-hot vector — the fields a real catalog would already know about a product before anyone looks at the photo.
-- **Target:** `subCategory` (Topwear, Shoes, Bags, Watches, …) — **27 classes** after dropping the long tail under 100 samples (18 classes, 0.8% of rows). This is a finer grain than the obvious `masterCategory` (5 broad classes); at the broad grain the photo alone nearly saturates the signal, which makes it a weak test of whether attributes add anything. `subCategory` is also closer to what a real catalog contract requires.
-
-`01_eda.ipynb` quantifies the target imbalance and measures each attribute's association with the target (Cramér's V) — the up-front check that justified testing a multi-modal model at all.
+- **Image:** resized to 80×80 RGB (the EDA notebook walks through why).
+- **Metadata (the similarity signal's source):** `productDisplayName`,
+  `articleType`, `subCategory`, `gender`, `baseColour`, `season`, `usage`.
+- After dropping subcategories under 100 samples, the catalog spans **27 subcategories**.
 
 ## Methodology
 
-**Two models, one honest difference.**
+### Two recommenders, one honest comparison
 
-- **Baseline** — image-only CNN (3 conv blocks, BatchNorm, dropout).
-- **Proposed** — the *same* image trunk plus a small attribute MLP branch, concatenated before the classifier head.
+- **Baseline — popularity-by-category** (`PopularityRecommender`). Within the
+  query item's subcategory, it returns items of the most popular article types
+  in the catalog. Category-correct by construction, but identical for every
+  query in a category — the "generic" behavior the stakeholder complains about.
+- **Proposed — hybrid** (`HybridRecommender`). Ranks by **metadata similarity**
+  — sentence-transformers embeddings (`all-MiniLM-L6-v2`, cosine) over the
+  product's natural-language text — then boosts candidates that match the query's
+  **predicted category** (the image-classification signal) and its **gender**.
+  The *same* embedding model backs both the offline evaluation and the live
+  Chroma index (`src/embeddings.py`), so the numbers and the served system
+  measure similarity identically. The category signal is injectable, so the live
+  app supplies the image model's prediction while the offline evaluation supplies
+  the ground-truth category — isolating retrieval quality from classifier error
+  (the classifier's own accuracy, ~93%, is reported in the appendix).
 
-Both train identically: same preprocessing, same 70/15/15 stratified split, same class-weighted loss, same optimizer. The only thing that changes is whether the model sees the attribute branch — enforced in code by a shared trunk, not by convention.
+### Two interaction modes, one agent
 
-**Rigor: 3 seeds, not 1.** A single run isn't evidence for "model X beats model Y." Every number here is mean ± std across seeds `[0, 1, 2]`, with the train/val/test split held fixed (`SPLIT_SEED=42`) so seed variation isolates the architecture, not a lucky partition.
+A local tool-calling agent (Ollama, running entirely on-device — no external API
+and no keys to manage) turns either input into recommendations:
 
-**Two follow-up experiments before drawing a conclusion:** an attribute ablation (does a smaller, less noisy attribute set help?) and a longer 25-epoch run (did the deeper model just need more time?). Neither moved the result — which is the point of running them.
+- **Describe it** → the agent calls `search_similar_products` on the description.
+- **Show it** → the agent calls `classify_product` on the photo, then
+  `search_similar_products` *within the predicted subcategory*.
 
-**Metrics:** accuracy, macro-F1 (the headline, given the imbalance), weighted-F1, per-class F1, confusion matrices — plus an **auto-tag rate**: the share of items predicted at ≥85% confidence, the operational number a catalog team uses to decide how much manual review they can skip.
+The agent decides which tools a message needs; the recommender composes the
+ranking.
+
+### The relevance proxy — and its honest limitation
+
+With no interaction data, relevance is a **content-based proxy** built only from
+existing columns: an item is relevant to a query when it shares the query's
+**`articleType` and `gender`**. This is *finer* than the subcategory the
+baseline groups by — which is what makes the comparison meaningful (the baseline
+gets the category right but the specific item wrong). Two deliberate choices
+keep the proxy honest:
+
+- The fields that *define* relevance (`articleType`, `gender`) are **excluded
+  from the indexed similarity text**, so the retriever can't read the answer off
+  a verbatim categorical token; it must recover relevance from the natural
+  product name and the remaining attributes.
+- The proxy measures whether the model recovers fine-grained catalog structure
+  the baseline ignores — **not** real user preference. That caveat travels with
+  every number below.
+
+## The app — a working storefront
+
+A single-page Reflex storefront puts the recommender in front of a user the way
+a real *suggested-product* surface would: a recommended-products shelf alongside
+an AI shopping assistant. Every product on screen is a real catalog item shown
+with its own photo; nothing is generated.
+
+![Storefront — recommended shelf and AI assistant](docs/screenshot_storefront.png)
+
+Two market-standard recommendation patterns drive it:
+
+- **Describe it** — semantic text search. The assistant embeds the request,
+  cosine-ranks the catalog, and replies with a concrete summary of what it found.
+  The recommendations come straight from retrieval and are shown as cards, so the
+  results are always grounded in the catalog rather than generated.
+- **Find similar** — item-to-item "more like this" from any product, via the
+  hybrid recommender (similarity + category + gender).
+
+![Semantic search results, grounded](docs/screenshot_storefront_search.png)
+
+*Find similar* off any product returns item-to-item recommendations:
+
+![Item-to-item recommendations](docs/screenshot_storefront_similar.png)
+
+```bash
+cd app && reflex run     # serves the storefront at http://localhost:3000
+```
 
 ## Architecture
 
-**Model** (`src/models.py` — both models share one image trunk, so the comparison stays fair by construction):
-
-![Model architecture](docs/model_architecture.png)
-
-**System** — how the pieces fit from trained model to a working product:
+**System — how a photo or a description becomes recommendations:**
 
 ![System architecture](docs/system_architecture.png)
 
-A **data contract** (`src/contract.py`) pins the output schema downstream consumers depend on — `product_id`, `predicted_subcategory`, `confidence`, `model_name`, `model_version`, `predicted_at` — with `validate_prediction_record()` raising on a malformed record instead of letting it through. A small local agent (Ollama — no external API, no keys, nothing that can leak from a public repo) has two tools: `classify_product` (the trained model, contract-wrapped) and `search_similar_products` (RAG over catalog metadata via a local Chroma index). The agent picks the tool a question needs.
-
-The app's **Live Demo** runs both models side by side on any catalog sample or an uploaded photo:
-
-![Live Demo](docs/screenshot_live_demo.png)
+A **data contract** (`src/contract.py`) pins the prediction schema the image
+signal emits, with `validate_prediction_record()` raising on a malformed record
+instead of letting it through.
 
 **Repository:**
 
 ```
 src/
-  data.py          dataset load, resize/transform, stratified split, caching (generic target/attribute columns)
-  models.py        BaselineImageModel, MultiModalProductClassifier
-  train.py         python -m src.train --model baseline|proposed --seed 0 [--attributes col ...]
-  evaluate.py      python -m src.evaluate --model baseline|proposed --seed 0
-  aggregate.py     mean +/- std across seeds, summed confusion matrices
-  run_all.py       python -m src.run_all --seeds 0 1 2 --epochs 25   (the one-command full experiment)
-  run_ablation.py  the attribute-subset sweep
+  recommender.py   PopularityRecommender, HybridRecommender, EmbeddingRetriever, relevance proxy
+  embeddings.py    shared sentence-encoder (all-MiniLM-L6-v2, cosine) for eval AND serving
+  evaluate_reco.py offline ranking metrics (precision@k / recall@k / NDCG@k), baseline vs proposed
+  rag.py           Chroma index over catalog metadata (the live similarity signal, cosine)
+  agent.py         the tool-calling agent: classify_product + search_similar_products
+  inference.py     shared predict() / predict_with_contract() for the image signal
+  data.py          dataset load, resize/transform, stratified split, caching
+  models.py        BaselineImageModel (the shipped image signal), MultiModalProductClassifier
   contract.py      output data contract + validator
-  inference.py     shared predict() / predict_with_contract()
-  rag.py           Chroma index over product metadata
-  agent.py         the tool-calling agent
+  train.py / evaluate.py / aggregate.py / run_all.py   train + evaluate the image signal
 notebooks/
-  01_eda.ipynb         class balance, attribute-vs-target association, image-size rationale
-  02_case_study.ipynb  the full narrative, executed end to end
-tests/             pytest: data-contract schema/bounds, model sanity, metric-regression floors
-app/               Reflex app — Live Demo, Quality Monitoring, Ask the Catalog
-artifacts/         aggregated metrics, confusion matrices, training history (checkpoints gitignored)
-docs/              architecture diagrams (rendered by make_diagrams.py) and app screenshots
+  01_eda.ipynb         catalog description (Descriptive pillar)
+  02_case_study.ipynb  the classification sub-experiment, executed end to end
+tests/             pytest: recommender metrics + relevance, data contract, model sanity
+artifacts/         reco_metrics_summary.json + the classifier's aggregated metrics
+docs/              requirement.md, architecture diagrams, app screenshots
+app/app/
+  storefront.py          the single-page UI (recommended shelf + AI chat + find-similar)
+  recommender_service.py in-process recommendation service (search / similar / shelf + images)
 ```
 
 **Running it:**
@@ -93,51 +202,91 @@ docs/              architecture diagrams (rendered by make_diagrams.py) and app 
 ```bash
 pip install -r requirements.txt
 
-# trains + evaluates both models across 3 seeds, aggregates, exports the app's demo assets
-python -m src.run_all --seeds 0 1 2 --epochs 25
+# baseline vs hybrid, offline ranking metrics -> artifacts/reco_metrics_summary.json
+python -m src.evaluate_reco --n-queries 1000 --ks 5 10
 
-python -m src.run_ablation --seeds 0 1 2 --epochs 10   # optional, already run (see Results)
-pytest                                                  # contract + model sanity always run; regression gate needs the run above
+# optional: use the real image classifier as the category signal (needs checkpoints below)
+python -m src.run_all --seeds 0 1 2 --epochs 25            # trains the image signal
+python -m src.evaluate_reco --category-signal image
 
+pytest                       # recommender + contract tests always run; image tests skip without checkpoints
 ollama pull llama3.1:8b      # the agent needs a local Ollama model
-cd app && reflex run         # Live Demo needs the checkpoints from run_all first
 ```
 
 ## Results
+
+Offline evaluation over **1,000 query items**, k ∈ {5, 10}, category signal =
+ground truth (isolating retrieval quality). Relevance is the content-based proxy
+described above — **not** observed user behavior.
+
+| Metric | Baseline (popularity) | Proposed (hybrid) | Lift |
+|---|---|---|---|
+| **precision@5** | 0.325 | **0.898** | +176% |
+| **precision@10** | 0.308 | **0.873** | +184% |
+| **NDCG@5** | 0.320 | **0.906** | +183% |
+| **NDCG@10** | 0.309 | **0.888** | +187% |
+| recall@5 | 0.003 | 0.022 | +636% |
+| recall@10 | 0.006 | 0.037 | +515% |
+
+**The hybrid clears the acceptance bar decisively.** Three things worth keeping
+in mind about these numbers:
+
+- **The margin survived removing a leak.** A development version indexed the
+  `articleType` field verbatim — the very label that defines relevance —
+  inflating precision@5 to 0.97. Excluding the relevance-defining fields from the
+  similarity text is what keeps the reported 0.90 honest rather than circular.
+- **Recall is low by construction, not by weakness.** Each query has tens to
+  hundreds of proxy-relevant items while k ≤ 10, so recall@10 ≈ 0.04 is near its
+  natural ceiling. Precision and NDCG are the meaningful metrics here; recall is
+  shown for completeness.
+- **This is a content-recovery result, not a preference result.** It shows the
+  hybrid recovers fine-grained catalog structure the popularity baseline is
+  blind to. Proving a *preference* lift would require real interaction data this
+  dataset does not have.
+
+### Prescriptive read (Pillar 4)
+
+Ship the hybrid behind the suggested-product surface, with the popularity
+baseline retained as a fallback. Because the offline win is a content-recovery
+proxy, the honest next step before claiming business value is an **online A/B
+test** measuring the actual revenue/engagement KPIs that motivated the work.
+Suggested OKRs: *Objective* — make suggested-product genuinely useful;
+*Key Results* — (1) hybrid live behind a feature flag, (2) A/B test instrumented
+on click-through and add-to-cart, (3) a calibrated relevance threshold for the
+recommendation cutoff.
+
+## Limitations & Next Steps
+
+- **No interaction data.** The headline limitation, stated up front: offline
+  ranking on a content proxy is a stand-in for, not a measurement of, user
+  preference. An online A/B test is the real validation.
+- **Retrieval scale.** The offline evaluation and the live Chroma index share
+  one embedding model (`all-MiniLM-L6-v2`, cosine), so they measure similarity
+  identically; the Chroma index here is a representative 5,000-item slice, not a
+  production-scale ANN deployment.
+- **Out-of-distribution photos.** The image signal is trained on catalog-style
+  photos; a differently-shot image can be confidently misclassified (documented
+  in the appendix), which would mis-route the category boost. A deployment gate
+  needs a separate OOD evaluation set.
+
+## Appendix: the classification sub-experiment
+
+Before the recommender, this project asked a narrower question: does adding a
+product's structured attributes to its photo improve **classification** of
+`subCategory`? The answer, across 3 seeds plus an attribute ablation and a
+longer 25-epoch run, was **no** — the image-only model wins on every metric and
+is far more stable. That negative result is *why the recommender's image signal
+is the image-only baseline*, not the multi-modal variant.
 
 | | Baseline (image only) | Proposed (image + attributes) |
 |---|---|---|
 | Accuracy | **93.1% ± 0.03%** | 88.3% ± 0.9% |
 | Macro F1 | **0.854 ± 0.002** | 0.803 ± 0.007 |
 | Weighted F1 | **0.935 ± 0.0001** | 0.897 ± 0.005 |
-| Auto-tag rate (≥85% confidence) | **87.2% ± 0.8%** | 63.4% ± 6.0% |
 
-The baseline wins on every metric *and* is far more stable — it converges to essentially the same solution every run (std 0.0001–0.002), while the proposed model is both worse and noisier (up to 6 points of std on the auto-tag rate). **For this dataset, architecture, and target grain, the production recommendation is the image-only baseline.**
+A documented failure from that study, kept because it is instructive: a stock
+photo of a white sneaker, shot differently than the catalog, was classified as
+"Bags" at 94.7% confidence — confidently wrong, the reason an OOD evaluation set
+is on the next-steps list. The model architecture for the comparison:
 
-### Why the baseline wins
-
-This survived two checks before I accepted it:
-
-**Attribute ablation.** Maybe a smaller, less noisy attribute set helps — `baseColour` (46 values) is a plausible source of dilution. It doesn't:
-
-| Variant | Accuracy | Macro F1 |
-|---|---|---|
-| Baseline | 0.863 ± 0.017 | 0.786 ± 0.014 |
-| Proposed, all 4 attributes | 0.839 ± 0.022 | 0.743 ± 0.036 |
-| Proposed, gender only | 0.816 ± 0.005 | 0.735 ± 0.020 |
-| Proposed, gender + season + usage | 0.800 ± 0.081 | 0.738 ± 0.069 |
-
-No subset beats the baseline, and dropping `baseColour` actually made training *less* stable (one seed collapsed to 68.6% while two others hit ~85.8%).
-
-**More training time.** Re-ran both at 25 epochs instead of 10. Both improved — but the baseline improved more and its variance shrank to near zero. More epochs widened the gap; they weren't the bottleneck.
-
-**Per-class read.** The attribute branch helps a few low-support classes by a hair (+0.004 to +0.028 F1) but hurts more and bigger ones (Scarves −0.276, Headwear −0.151, Sandal −0.149). At this grain the photo already carries most of the signal, and a plain concatenation gives the model no way to *learn when to ignore* a weak attribute. That's a legitimate, useful result: it tells a team not to pay the extra training/inference complexity for the attribute branch on this target.
-
-## Limitations & Next Steps
-
-- **Fusion mechanism.** A gating/attention layer (instead of plain concatenation) could let the model downweight irrelevant attributes per example — the most promising thing to try next.
-- **Finer target.** `articleType` (141 classes) is a grain where attributes might correlate more tightly with the label; untested here.
-- **Multi-task head** (predict `masterCategory` and `subCategory` jointly) remains untested.
-- **Checkpoint hosting.** The Live Demo needs `run_all` to have run locally; hosting checkpoints (GitHub Release / HF Hub) would make it zero-setup on a fresh clone.
-- **Confidence calibration.** The 85% auto-tag threshold is a sensible default, not a calibrated one — temperature scaling would make the operational number trustworthy before shipping it.
-- **Out-of-distribution photos.** The test set comes from the same catalog style as training, so it can't catch a domain shift. The app's "Upload your own" exposed this directly: a stock photo of a white sneaker, shot differently than the catalog, was classified as "Bags" at 94.7% confidence — confidently wrong. A real deployment gate would need a separate OOD evaluation set.
+![Model architecture](docs/model_architecture.png)

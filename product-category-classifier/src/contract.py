@@ -1,7 +1,8 @@
-"""The output data contract this classifier promises downstream
-consumers (other ML models, executive/operational reports). Single
-source of truth for prediction record shape -- inference.py and
-agent.py build records through here, not ad hoc dicts.
+"""The output data contract for the recommender's image signal: the
+schema the trained vision model promises downstream consumers (the
+agent's `classify_product` tool, any batch-scoring job). Single source
+of truth for prediction record shape -- inference.py and agent.py build
+records through here, not ad hoc dicts.
 """
 import uuid
 from dataclasses import asdict, dataclass

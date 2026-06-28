@@ -1,13 +1,19 @@
-"""Chroma-backed retrieval over product metadata.
+"""Chroma-backed retrieval over product metadata -- the live
+metadata-similarity signal behind the recommender.
 
-Powers the `search_similar_products` tool used by the local tool-calling
-agent (src/agent.py). Deliberately simple: one collection, Chroma's bundled
-default embedding model, metadata text built from the dataset's own columns.
+Powers the `search_similar_products` tool used by the tool-calling agent
+(src/agent.py). It embeds product text with the *same* sentence-encoder as
+the offline recommender (src/embeddings.py, `all-MiniLM-L6-v2`) and queries
+with **cosine** distance, so the served system and the offline evaluation
+measure similarity identically rather than on two different metrics.
 """
 import json
 from pathlib import Path
 
 import chromadb
+from chromadb.utils import embedding_functions
+
+from .embeddings import EMBEDDING_MODEL
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CHROMA_DIR = ROOT_DIR / "data" / "chroma"
@@ -18,6 +24,18 @@ METADATA_COLUMNS = [
     "id", "gender", "masterCategory", "subCategory", "articleType",
     "baseColour", "season", "usage", "productDisplayName",
 ]
+
+# Same model as the offline retriever (src/embeddings.py). Cached on the
+# module so building and querying the collection share one encoder.
+_embedding_fn_cache = {}
+
+
+def _embedding_fn():
+    if "fn" not in _embedding_fn_cache:
+        _embedding_fn_cache["fn"] = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=EMBEDDING_MODEL
+        )
+    return _embedding_fn_cache["fn"]
 
 
 def _product_text(row):
@@ -35,13 +53,17 @@ def build_index(force_rebuild=False, n=INDEX_SIZE):
     existing = {c.name for c in client.list_collections()}
 
     if not force_rebuild and COLLECTION_NAME in existing:
-        collection = client.get_collection(COLLECTION_NAME)
+        collection = client.get_collection(COLLECTION_NAME, embedding_function=_embedding_fn())
         if collection.count() > 0:
             return collection
 
     if COLLECTION_NAME in existing:
         client.delete_collection(COLLECTION_NAME)
-    collection = client.create_collection(COLLECTION_NAME)
+    collection = client.create_collection(
+        COLLECTION_NAME,
+        embedding_function=_embedding_fn(),
+        metadata={"hnsw:space": "cosine"},  # cosine, not Chroma's L2 default
+    )
 
     from datasets import load_dataset
 
@@ -79,7 +101,7 @@ def build_index(force_rebuild=False, n=INDEX_SIZE):
 def get_collection():
     client = chromadb.PersistentClient(path=str(CHROMA_DIR))
     try:
-        collection = client.get_collection(COLLECTION_NAME)
+        collection = client.get_collection(COLLECTION_NAME, embedding_function=_embedding_fn())
         if collection.count() == 0:
             return build_index()
         return collection
@@ -87,9 +109,14 @@ def get_collection():
         return build_index()
 
 
-def search_similar_products(query, n_results=5):
+def search_similar_products(query, n_results=5, category=None):
+    """Retrieve catalog items similar to `query`. When `category` is given
+    (e.g. the subCategory predicted from a product photo), results are
+    restricted to that category -- this is how the recommender combines the
+    image-classification signal with the metadata-similarity signal."""
     collection = get_collection()
-    results = collection.query(query_texts=[query], n_results=n_results)
+    where = {"subCategory": category} if category else None
+    results = collection.query(query_texts=[query], n_results=n_results, where=where)
     products = []
     for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
         products.append({**meta, "match_text": doc, "distance": round(float(dist), 4)})

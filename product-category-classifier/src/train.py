@@ -1,10 +1,11 @@
-"""Train either the baseline (image-only) or proposed (image + structured
-attributes) model. Both are trained identically (same split, same epochs,
-same loss) so the only real difference between them is whether the model
-sees the attribute branch.
+"""Trains the recommender's image signal -- the vision model whose
+predicted subcategory the recommender uses. Two variants: the image-only
+`baseline` (the one that ships) and the `proposed` image + attributes
+model (kept for the classification appendix). Both train identically
+(same split, epochs, loss), so the only difference is the attribute branch.
 
 Run across multiple seeds (via src.run_all, or manually) to get a mean +/-
-std comparison instead of trusting a single training run.
+std read instead of trusting a single training run.
 
 Usage:
     python -m src.train --model baseline --seed 0 --epochs 10

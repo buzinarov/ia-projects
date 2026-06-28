@@ -1,5 +1,8 @@
-"""Evaluates a trained model on the held-out test split, writes metrics +
-a confusion matrix plot to artifacts/ for one (model, seed) pair.
+"""Evaluates a trained image-signal model on the held-out test split,
+writing metrics + a confusion matrix plot to artifacts/ for one
+(model, seed) pair. The image-only `baseline` is the signal the
+recommender ships; `proposed` (image + attributes) is kept for the
+classification appendix.
 
 Usage:
     python -m src.evaluate --model baseline --seed 0
@@ -27,7 +30,6 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = ROOT_DIR / "artifacts"
 CHECKPOINT_DIR = ARTIFACTS_DIR / "checkpoints"
 
-CONFIDENCE_THRESHOLD = 0.85
 MAX_ANNOTATED_CLASSES = 12  # above this, per-cell text on the confusion matrix is unreadable noise
 
 
@@ -42,15 +44,13 @@ def load_checkpoint(name, seed, num_classes, attr_dim, device, tag=""):
 
 @torch.no_grad()
 def collect_predictions(model, loader, device):
-    all_labels, all_preds, all_confidences = [], [], []
+    all_labels, all_preds = [], []
     for (images, attrs), labels in loader:
         images, attrs = images.to(device), attrs.to(device)
-        probs = torch.softmax(model(images, attrs), dim=1)
-        confs, preds = probs.max(dim=1)
+        preds = model(images, attrs).argmax(dim=1)
         all_labels.extend(labels.numpy().tolist())
         all_preds.extend(preds.cpu().numpy().tolist())
-        all_confidences.extend(confs.cpu().numpy().tolist())
-    return np.array(all_labels), np.array(all_preds), np.array(all_confidences)
+    return np.array(all_labels), np.array(all_preds)
 
 
 def plot_confusion_matrix(cm, class_names, out_path, title):
@@ -79,24 +79,13 @@ def plot_confusion_matrix(cm, class_names, out_path, title):
 
 def evaluate_model(name, seed, test_loader, class_names, device, num_classes, attr_dim, tag=""):
     model = load_checkpoint(name, seed, num_classes, attr_dim, device, tag=tag)
-    labels, preds, confidences = collect_predictions(model, test_loader, device)
+    labels, preds = collect_predictions(model, test_loader, device)
 
     report = classification_report(
         labels, preds, labels=range(num_classes), target_names=class_names,
         output_dict=True, zero_division=0,
     )
     cm = confusion_matrix(labels, preds, labels=range(num_classes))
-
-    history_path = ARTIFACTS_DIR / f"history_{name}{tag}_seed{seed}.json"
-    history = json.loads(history_path.read_text()) if history_path.exists() else {}
-
-    high_conf_mask = confidences >= CONFIDENCE_THRESHOLD
-    per_class_high_conf = {}
-    for idx, cname in enumerate(class_names):
-        class_mask = labels == idx
-        per_class_high_conf[cname] = (
-            float((confidences[class_mask] >= CONFIDENCE_THRESHOLD).mean()) if class_mask.sum() > 0 else None
-        )
 
     metrics = {
         "model": name,
@@ -107,13 +96,6 @@ def evaluate_model(name, seed, test_loader, class_names, device, num_classes, at
         "per_class": {c: report[c] for c in class_names},
         "confusion_matrix": cm.tolist(),
         "class_names": class_names,
-        "high_confidence_rate": float(high_conf_mask.mean()),
-        "high_confidence_threshold": CONFIDENCE_THRESHOLD,
-        "per_class_high_confidence_rate": per_class_high_conf,
-        "training_history": history,
-        "test_labels": labels.tolist(),
-        "test_predictions": preds.tolist(),
-        "test_confidences": confidences.tolist(),
     }
 
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -148,7 +130,7 @@ def main():
     metrics = evaluate_model(args.model, args.seed, test_loader, class_names, device, num_classes, attr_dim, tag=tag)
     print(
         f"{args.model}{tag} (seed {args.seed}): accuracy={metrics['accuracy']:.4f} "
-        f"macro_f1={metrics['macro_f1']:.4f} high_confidence_rate={metrics['high_confidence_rate']:.4f}"
+        f"macro_f1={metrics['macro_f1']:.4f}"
     )
 
 

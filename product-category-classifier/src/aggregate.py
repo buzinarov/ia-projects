@@ -1,6 +1,7 @@
-"""Aggregates per-seed metrics into a mean +/- std summary, so a
-baseline-vs-proposed comparison reflects more than one lucky (or unlucky)
-training run.
+"""Aggregates per-seed image-signal metrics into a mean +/- std summary,
+so the classification appendix reflects more than one lucky (or unlucky)
+training run. Writes a slim summary (headline metrics + per-class F1 +
+summed confusion matrix) -- no per-sample arrays.
 
 Usage:
     python -m src.aggregate --seeds 0 1 2
@@ -36,7 +37,6 @@ def aggregate_model(model_name, seeds, tag=""):
         "accuracy": _agg([r["accuracy"] for r in runs]),
         "macro_f1": _agg([r["macro_f1"] for r in runs]),
         "weighted_f1": _agg([r["weighted_f1"] for r in runs]),
-        "high_confidence_rate": _agg([r["high_confidence_rate"] for r in runs]),
         "per_class_f1": {
             c: _agg([r["per_class"][c]["f1-score"] for r in runs]) for c in class_names
         },
@@ -48,11 +48,6 @@ def aggregate_model(model_name, seeds, tag=""):
 
     confusion_matrix_summed = np.sum([r["confusion_matrix"] for r in runs], axis=0)
     summary["confusion_matrix_summed"] = confusion_matrix_summed.tolist()
-
-    test_labels = np.concatenate([np.array(r["test_labels"]) for r in runs])
-    test_confidences = np.concatenate([np.array(r["test_confidences"]) for r in runs])
-    summary["test_labels_all_seeds"] = test_labels.tolist()
-    summary["test_confidences_all_seeds"] = test_confidences.tolist()
 
     (ARTIFACTS_DIR / f"metrics_{model_name}{tag}_summary.json").write_text(json.dumps(summary, indent=2))
     plot_confusion_matrix(
