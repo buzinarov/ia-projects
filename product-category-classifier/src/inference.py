@@ -23,8 +23,7 @@ def load_model(name, seed=0, device=None):
     device = device or get_device()
     maps = load_label_maps()
     num_classes = len(maps["target_classes"])
-    attr_dim = maps["attribute_dim"]
-    model = build_model(name, num_classes=num_classes, attr_dim=attr_dim, img_size=IMG_SIZE)
+    model = build_model(num_classes=num_classes, img_size=IMG_SIZE)
     state = torch.load(CHECKPOINT_DIR / f"{name}_seed{seed}.pt", map_location=device)
     model.load_state_dict(state["model_state_dict"])
     model.to(device)

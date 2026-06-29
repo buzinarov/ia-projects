@@ -42,15 +42,6 @@ def _attr_cache_path(column):
     return PROCESSED_DIR / f"{column.lower()}.npy"
 
 
-def variant_tag(attributes):
-    """Filename suffix identifying which attribute subset a 'proposed'
-    run used -- empty for the default (all attributes), so existing
-    artifacts from before ablation testing keep their original names."""
-    if not attributes:
-        return ""
-    return "_" + "-".join(attributes)
-
-
 def _filter_rare_classes(ds, column, min_count):
     counts = Counter(ds[column])
     keep = {c for c, n in counts.items() if n >= min_count}

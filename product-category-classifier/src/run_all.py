@@ -1,7 +1,6 @@
 """Reproduces the recommender's image signal end to end: trains and
-evaluates both vision variants across all seeds, then aggregates the
-classification-appendix metrics. One command -- the "it's automatic"
-entry point.
+evaluates the image classifier across all seeds, then aggregates the
+metrics. One command -- the "it's automatic" entry point.
 
 Usage:
     python -m src.run_all --seeds 0 1 2 --epochs 10
@@ -11,6 +10,7 @@ import subprocess
 import sys
 
 from . import aggregate
+from .evaluate import MODEL_NAME
 
 
 def _run(args_list):
@@ -26,24 +26,22 @@ def main():
     parser.add_argument("--subset-frac", type=float, default=1.0)
     args = parser.parse_args()
 
-    for model in ("baseline", "proposed"):
-        for seed in args.seeds:
-            _run([
-                sys.executable, "-m", "src.train",
-                "--model", model, "--seed", str(seed),
-                "--epochs", str(args.epochs),
-                "--batch-size", str(args.batch_size),
-                "--subset-frac", str(args.subset_frac),
-            ])
-            _run([sys.executable, "-m", "src.evaluate", "--model", model, "--seed", str(seed)])
+    for seed in args.seeds:
+        _run([
+            sys.executable, "-m", "src.train",
+            "--seed", str(seed),
+            "--epochs", str(args.epochs),
+            "--batch-size", str(args.batch_size),
+            "--subset-frac", str(args.subset_frac),
+        ])
+        _run([sys.executable, "-m", "src.evaluate", "--seed", str(seed)])
 
     print("\nAggregating across seeds...")
-    for model in ("baseline", "proposed"):
-        summary = aggregate.aggregate_model(model, args.seeds)
-        print(
-            f"{model}: accuracy={summary['accuracy']['mean']:.4f}+/-{summary['accuracy']['std']:.4f} "
-            f"macro_f1={summary['macro_f1']['mean']:.4f}+/-{summary['macro_f1']['std']:.4f}"
-        )
+    summary = aggregate.aggregate_model(MODEL_NAME, args.seeds)
+    print(
+        f"{MODEL_NAME}: accuracy={summary['accuracy']['mean']:.4f}+/-{summary['accuracy']['std']:.4f} "
+        f"macro_f1={summary['macro_f1']['mean']:.4f}+/-{summary['macro_f1']['std']:.4f}"
+    )
 
 
 if __name__ == "__main__":

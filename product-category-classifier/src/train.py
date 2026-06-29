@@ -1,15 +1,11 @@
-"""Trains the recommender's image signal -- the vision model whose
-predicted subcategory the recommender uses. Two variants: the image-only
-`baseline` (the one that ships) and the `proposed` image + attributes
-model (kept for the classification appendix). Both train identically
-(same split, epochs, loss), so the only difference is the attribute branch.
+"""Trains the recommender's image signal -- the CNN whose predicted
+subcategory the recommender uses to keep suggestions on-category.
 
-Run across multiple seeds (via src.run_all, or manually) to get a mean +/-
-std read instead of trusting a single training run.
+Run across multiple seeds (via src.run_all, or manually) to get a
+mean +/- std read instead of trusting a single training run.
 
 Usage:
-    python -m src.train --model baseline --seed 0 --epochs 10
-    python -m src.train --model proposed --seed 0 --epochs 10
+    python -m src.train --seed 0 --epochs 10
 """
 import argparse
 import json
@@ -20,12 +16,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .data import IMG_SIZE, get_dataloaders, variant_tag
+from .data import IMG_SIZE, get_dataloaders
 from .models import build_model
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = ROOT_DIR / "artifacts"
 CHECKPOINT_DIR = ARTIFACTS_DIR / "checkpoints"
+MODEL_NAME = "image_classifier"
 
 
 def run_epoch(model, loader, criterion, optimizer, device, train):
@@ -58,35 +55,25 @@ def compute_class_weights(loader, num_classes, device):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", choices=["baseline", "proposed"], required=True)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--subset-frac", type=float, default=1.0)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument(
-        "--attributes", nargs="+", default=None,
-        help="Subset of attribute columns to use (proposed model only); defaults to all of them.",
-    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}, seed: {args.seed}, attributes: {args.attributes or 'all'}")
+    print(f"Using device: {device}, seed: {args.seed}")
 
     train_loader, val_loader, _, maps = get_dataloaders(
         batch_size=args.batch_size, subset_frac=args.subset_frac, seed=args.seed,
-        attribute_columns=args.attributes,
     )
     num_classes = len(maps["target_classes"])
-    attr_dim = (
-        maps["attribute_dim"] if not args.attributes
-        else sum(len(maps["attribute_classes"][c]) for c in args.attributes)
-    )
 
-    model = build_model(args.model, num_classes=num_classes, attr_dim=attr_dim, img_size=IMG_SIZE)
+    model = build_model(num_classes=num_classes, img_size=IMG_SIZE)
     model.to(device)
 
     class_weights = compute_class_weights(train_loader, num_classes, device)
@@ -107,29 +94,25 @@ def main():
              "val_loss": val_loss, "val_acc": val_acc}
         )
 
-    tag = variant_tag(args.attributes)
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "model_state_dict": model.state_dict(),
-            "model_name": args.model,
+            "model_name": MODEL_NAME,
             "seed": args.seed,
-            "attributes": args.attributes or maps["attribute_columns"],
             "num_classes": num_classes,
-            "attr_dim": attr_dim,
             "img_size": IMG_SIZE,
         },
-        CHECKPOINT_DIR / f"{args.model}{tag}_seed{args.seed}.pt",
+        CHECKPOINT_DIR / f"{MODEL_NAME}_seed{args.seed}.pt",
     )
     history_payload = {
-        "model": args.model,
+        "model": MODEL_NAME,
         "seed": args.seed,
-        "attributes": args.attributes or maps["attribute_columns"],
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "epochs": history,
     }
-    (ARTIFACTS_DIR / f"history_{args.model}{tag}_seed{args.seed}.json").write_text(json.dumps(history_payload, indent=2))
-    print(f"Saved checkpoint and history for '{args.model}{tag}' (seed {args.seed})")
+    (ARTIFACTS_DIR / f"history_{MODEL_NAME}_seed{args.seed}.json").write_text(json.dumps(history_payload, indent=2))
+    print(f"Saved checkpoint and history for '{MODEL_NAME}' (seed {args.seed})")
 
 
 if __name__ == "__main__":

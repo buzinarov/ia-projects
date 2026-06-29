@@ -120,7 +120,7 @@ def main():
         help="'true' supplies ground-truth category (isolates retrieval quality, "
              "runs without checkpoints); 'image' uses the trained classifier (full pipeline).",
     )
-    parser.add_argument("--vision-model", default="baseline", help="checkpoint for --category-signal image")
+    parser.add_argument("--vision-model", default="image_classifier", help="checkpoint for --category-signal image")
     args = parser.parse_args()
 
     print("Loading catalog...")

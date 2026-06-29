@@ -194,7 +194,7 @@ class ImageCategoryProvider:
     image array; the offline evaluation defaults to ground-truth category
     instead, so this is only used with `--category-signal image`."""
 
-    def __init__(self, df, model_name="baseline", seed=0):
+    def __init__(self, df, model_name="image_classifier", seed=0):
         import torch
 
         from .data import IMAGES_CACHE
@@ -213,8 +213,8 @@ class ImageCategoryProvider:
     def __call__(self, anchor_idx):
         img = self.images[anchor_idx].astype(np.float32) / 255.0
         tensor = self._torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).to(self.device)
-        # The baseline model ignores the attribute branch; pass a zero
-        # vector so the call works for either architecture.
+        # The image classifier ignores the attribute argument; pass a zero
+        # vector to satisfy the shared forward signature.
         attr = self._torch.zeros(1, self.maps["attribute_dim"], device=self.device)
         with self._torch.no_grad():
             logits = self.model(tensor, attr)

@@ -88,56 +88,6 @@ def data_product_overview():
     plt.close(fig)
 
 
-def model_architecture():
-    fig, ax = plt.subplots(figsize=(11, 6.2))
-    ax.set_xlim(0, 11)
-    ax.set_ylim(0, 6.2)
-    ax.axis("off")
-
-    ax.text(2.75, 6.0, "Baseline — image only", ha="center", fontsize=12, weight="bold", color=INK)
-    ax.text(8.25, 6.0, "Proposed — image + attributes", ha="center", fontsize=12, weight="bold", color=INK)
-    ax.axvline(5.5, color="#cbd2d9", linewidth=1, linestyle=(0, (4, 4)))
-
-    # Baseline column
-    _box(ax, 2.75, 5.25, 3.0, 0.6, "Image  3×80×80", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 2.75, 4.25, 3.6, 0.7, "Conv-BN-ReLU-Pool  ×3\n(shared image trunk)", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 2.75, 3.3, 3.0, 0.55, "Flatten → Linear(128)", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 2.75, 2.0, 3.0, 0.6, "Classifier head", HEAD_GREEN, fc="#eaf3ec")
-    _box(ax, 2.75, 0.9, 2.4, 0.6, "Subcategory", INK, fc=PANEL, weight="bold")
-    for a, b in [(4.95, 4.6), (3.9, 3.575), (3.05, 2.3), (1.7, 1.2)]:
-        pass
-    _arrow(ax, (2.75, 4.95), (2.75, 4.6))
-    _arrow(ax, (2.75, 3.9), (2.75, 3.575))
-    _arrow(ax, (2.75, 3.025), (2.75, 2.3))
-    _arrow(ax, (2.75, 1.7), (2.75, 1.2))
-
-    # Proposed column
-    _box(ax, 7.0, 5.25, 2.7, 0.6, "Image  3×80×80", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 7.0, 4.25, 3.0, 0.7, "Conv-BN-ReLU-Pool  ×3\n(same trunk)", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 7.0, 3.3, 2.7, 0.55, "Flatten → Linear(128)", IMG_BLUE, fc="#eaf0f8")
-    _box(ax, 9.7, 5.25, 2.2, 0.6, "Attributes (62)", ATTR_ORANGE, fc="#fbeee3")
-    _box(ax, 9.7, 4.0, 2.2, 0.7, "Linear → ReLU\n→ Dropout", ATTR_ORANGE, fc="#fbeee3")
-    _box(ax, 8.25, 2.35, 1.5, 0.5, "concat", MUTED, fc="white", fontsize=10)
-    _box(ax, 8.25, 1.5, 3.0, 0.6, "Classifier head", HEAD_GREEN, fc="#eaf3ec")
-    _box(ax, 8.25, 0.6, 2.2, 0.55, "Subcategory", INK, fc=PANEL, weight="bold")
-
-    _arrow(ax, (7.0, 4.95), (7.0, 4.6))
-    _arrow(ax, (7.0, 3.9), (7.0, 3.575))
-    _arrow(ax, (9.7, 4.95), (9.7, 4.375))
-    _arrow(ax, (7.0, 3.025), (8.05, 2.6))     # image -> concat
-    _arrow(ax, (9.7, 3.65), (8.55, 2.6))      # attr -> concat
-    _arrow(ax, (8.25, 2.1), (8.25, 1.8))
-    _arrow(ax, (8.25, 1.2), (8.25, 0.875))
-
-    ax.text(5.5, 0.15,
-            "Both models share the identical image trunk by construction — the only difference is the attribute branch.",
-            ha="center", fontsize=9.5, style="italic", color=MUTED)
-
-    fig.tight_layout()
-    fig.savefig(DOCS / "model_architecture.png", dpi=200, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-
-
 def system_architecture():
     fig, ax = plt.subplots(figsize=(11, 5.4))
     ax.set_xlim(0, 11)
@@ -180,6 +130,5 @@ def system_architecture():
 
 if __name__ == "__main__":
     data_product_overview()
-    model_architecture()
     system_architecture()
-    print(f"Wrote project_pipeline.png, model_architecture.png and system_architecture.png to {DOCS}")
+    print(f"Wrote project_pipeline.png and system_architecture.png to {DOCS}")

@@ -42,18 +42,11 @@ the Commercial Stakeholder wants a better model, and they frame the Objective.
 They are **not** measured in this project, and we will not pretend otherwise.
 
 The dataset behind this product is a **static product catalog** — it contains
-product attributes (gender, color, season, usage, article type, display name)
-but **no user-interaction data**: no clicks, no purchases, no sessions, no
-ratings. Without behavioral data, revenue and engagement **cannot be measured
-honestly**, and inventing synthetic interactions to claim a lift would be
-dishonest. We therefore draw a hard line:
+product attributes (gender, color, season, usage, article type, display name).
 
-- **Motivation (narrative only):** revenue and engagement on the suggested-product surface.
 - **Measured success (numbers only from existing data):** standard *offline*
   recommendation quality metrics — **precision@k, recall@k, NDCG@k** — where
-  relevance is derived from the catalog columns that actually exist (see
-  Methodology). This is a content-based evaluation **proxy**, and it is labeled
-  as a proxy everywhere it appears.
+  relevance is derived from the catalog columns(see Methodology). This is a content-based evaluation **proxy**, and it is labeled as a proxy everywhere it appears.
 
 The acceptance bar agreed in the meeting: **the new model must beat the
 popularity-by-category baseline on the offline recommendation metrics above.**
@@ -98,13 +91,9 @@ composes the final ranking.
   when it shares the same `subCategory` / `articleType` and is attribute-
   compatible (e.g., matching `gender`). This proxy and its limitation are
   stated wherever results are reported.
-- **On the honesty boundary (Commercial Stakeholder ↔ Senior AI Engineer).**
-  Revenue and engagement stay in the narrative as motivation; no synthetic
-  behavioral data is fabricated to report a business lift.
 - **On reuse (Senior AI Engineer).** The image classifier feeds the recommender
-  as a **category signal**, not as the end product. The signal is taken from the
-  model that actually won the earlier classification study (the image-only
-  baseline), correcting the prior wiring that shipped the weaker variant.
+  as a **category signal**, not as the end product — its predicted subcategory
+  filters and boosts the candidate set.
 - **On scope across the lifecycle (Product Manager).** The deliverable is framed
   against the four pillars of the data-product lifecycle (below), so the work is
   not "just a model" but a product with a diagnostic rationale and a
@@ -119,14 +108,6 @@ composes the final ranking.
 | **Predictive** — *what is going to happen* | What will the new model recommend? | The multi-modal recommender (image classification + metadata similarity, via the agent) |
 | **Prescriptive** — *what we should do* | What action follows from the results? | A go/no-go recommendation and OKRs for the suggested-product surface |
 
-### Prior sub-experiment (demoted from headline to supporting evidence)
-
-An earlier study in this repository tested whether adding a product's
-structured attributes to its photo improves **classification** of `subCategory`.
-It does not — the image-only model wins on every metric. That negative result is
-**not** the headline of this product; it is retained as the technical
-justification for *which* image signal the recommender consumes (the winning
-image-only model) and is documented as an appendix.
 
 ## Results
 

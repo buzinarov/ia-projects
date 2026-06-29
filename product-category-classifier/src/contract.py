@@ -16,7 +16,7 @@ class PredictionRecord:
     product_id: str
     predicted_subcategory: str
     confidence: float
-    model_name: str  # "baseline" | "proposed"
+    model_name: str  # the image classifier that produced the prediction
     model_version: str
     predicted_at: str  # ISO 8601 UTC
 
@@ -53,8 +53,8 @@ def validate_prediction_record(record, valid_classes):
     if not isinstance(confidence, (int, float)) or not (0.0 <= confidence <= 1.0):
         raise ValueError(f"confidence must be a number in [0, 1], got {confidence!r}")
 
-    if record["model_name"] not in ("baseline", "proposed"):
-        raise ValueError(f"model_name must be 'baseline' or 'proposed', got {record['model_name']!r}")
+    if not record["model_name"]:
+        raise ValueError("model_name must be a non-empty string")
 
     try:
         datetime.fromisoformat(record["predicted_at"])

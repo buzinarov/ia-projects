@@ -26,10 +26,9 @@ from .inference import load_model, predict_with_contract
 from .rag import search_similar_products
 
 MODEL_NAME = "llama3.1:8b"
-# The image signal comes from the image-only baseline -- the model the
-# classification study found wins on every metric, so it's what the
-# recommender ships (see docs/requirement.md).
-VISION_MODEL = "baseline"
+# The image signal: the trained CNN that predicts a product's subcategory
+# from its photo (see docs/requirement.md).
+VISION_MODEL = "image_classifier"
 VISION_MODEL_SEED = 0  # the seed whose checkpoint backs the agent's classify_product tool
 
 SYSTEM_PROMPT = """\
@@ -109,8 +108,8 @@ def _build_tools(maps):
             "function": {
                 "name": "classify_product",
                 "description": (
-                    "Predict a product's subcategory from a photo and its structured "
-                    "attributes, using our trained multi-modal model."
+                    "Predict a product's subcategory from a photo, using our trained "
+                    "image classifier."
                 ),
                 "parameters": {
                     "type": "object",

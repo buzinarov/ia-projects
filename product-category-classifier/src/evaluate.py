@@ -1,16 +1,11 @@
-"""Evaluates a trained image-signal model on the held-out test split,
-writing metrics + a confusion matrix plot to artifacts/ for one
-(model, seed) pair. The image-only `baseline` is the signal the
-recommender ships; `proposed` (image + attributes) is kept for the
-classification appendix.
+"""Evaluates the trained image-signal classifier on the held-out test
+split, writing metrics + a confusion matrix plot to artifacts/ for one
+seed.
 
 Usage:
-    python -m src.evaluate --model baseline --seed 0
-    python -m src.evaluate --model proposed --seed 0
+    python -m src.evaluate --seed 0
 
-Aggregating across seeds and exporting the app's demo assets are
-separate steps (src/aggregate.py, src/run_all.py) -- this module's job
-is strictly "evaluate one checkpoint."
+Aggregating across seeds is a separate step (src/aggregate.py).
 """
 import argparse
 import json
@@ -23,19 +18,20 @@ import numpy as np
 import torch
 from sklearn.metrics import classification_report, confusion_matrix
 
-from .data import IMG_SIZE, get_dataloaders, variant_tag
+from .data import IMG_SIZE, get_dataloaders
 from .models import build_model
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ARTIFACTS_DIR = ROOT_DIR / "artifacts"
 CHECKPOINT_DIR = ARTIFACTS_DIR / "checkpoints"
+MODEL_NAME = "image_classifier"
 
 MAX_ANNOTATED_CLASSES = 12  # above this, per-cell text on the confusion matrix is unreadable noise
 
 
-def load_checkpoint(name, seed, num_classes, attr_dim, device, tag=""):
-    model = build_model(name, num_classes=num_classes, attr_dim=attr_dim, img_size=IMG_SIZE)
-    state = torch.load(CHECKPOINT_DIR / f"{name}{tag}_seed{seed}.pt", map_location=device)
+def load_checkpoint(name, seed, num_classes, device):
+    model = build_model(num_classes=num_classes, img_size=IMG_SIZE)
+    state = torch.load(CHECKPOINT_DIR / f"{name}_seed{seed}.pt", map_location=device)
     model.load_state_dict(state["model_state_dict"])
     model.to(device)
     model.eval()
@@ -77,8 +73,8 @@ def plot_confusion_matrix(cm, class_names, out_path, title):
     plt.close(fig)
 
 
-def evaluate_model(name, seed, test_loader, class_names, device, num_classes, attr_dim, tag=""):
-    model = load_checkpoint(name, seed, num_classes, attr_dim, device, tag=tag)
+def evaluate_model(seed, test_loader, class_names, device, num_classes):
+    model = load_checkpoint(MODEL_NAME, seed, num_classes, device)
     labels, preds = collect_predictions(model, test_loader, device)
 
     report = classification_report(
@@ -88,7 +84,7 @@ def evaluate_model(name, seed, test_loader, class_names, device, num_classes, at
     cm = confusion_matrix(labels, preds, labels=range(num_classes))
 
     metrics = {
-        "model": name,
+        "model": MODEL_NAME,
         "seed": seed,
         "accuracy": report["accuracy"],
         "macro_f1": report["macro avg"]["f1-score"],
@@ -99,37 +95,27 @@ def evaluate_model(name, seed, test_loader, class_names, device, num_classes, at
     }
 
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    (ARTIFACTS_DIR / f"metrics_{name}{tag}_seed{seed}.json").write_text(json.dumps(metrics, indent=2))
+    (ARTIFACTS_DIR / f"metrics_{MODEL_NAME}_seed{seed}.json").write_text(json.dumps(metrics, indent=2))
     plot_confusion_matrix(
-        cm, class_names, ARTIFACTS_DIR / f"confusion_matrix_{name}{tag}_seed{seed}.png",
-        f"{name}{tag} (seed {seed}) - confusion matrix",
+        cm, class_names, ARTIFACTS_DIR / f"confusion_matrix_{MODEL_NAME}_seed{seed}.png",
+        f"{MODEL_NAME} (seed {seed}) - confusion matrix",
     )
     return metrics
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", choices=["baseline", "proposed"], required=True)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument(
-        "--attributes", nargs="+", default=None,
-        help="Subset of attribute columns the checkpoint was trained with (proposed model only).",
-    )
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    _, _, test_loader, maps = get_dataloaders(seed=args.seed, attribute_columns=args.attributes)
+    _, _, test_loader, maps = get_dataloaders(seed=args.seed)
     class_names = maps["target_classes"]
     num_classes = len(class_names)
-    attr_dim = (
-        maps["attribute_dim"] if not args.attributes
-        else sum(len(maps["attribute_classes"][c]) for c in args.attributes)
-    )
-    tag = variant_tag(args.attributes)
 
-    metrics = evaluate_model(args.model, args.seed, test_loader, class_names, device, num_classes, attr_dim, tag=tag)
+    metrics = evaluate_model(args.seed, test_loader, class_names, device, num_classes)
     print(
-        f"{args.model}{tag} (seed {args.seed}): accuracy={metrics['accuracy']:.4f} "
+        f"{MODEL_NAME} (seed {args.seed}): accuracy={metrics['accuracy']:.4f} "
         f"macro_f1={metrics['macro_f1']:.4f}"
     )
 

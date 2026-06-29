@@ -19,10 +19,8 @@ revenue lift: this catalog has no user-interaction data, so revenue and
 engagement serve as the motivation for the work rather than as measured outcomes
 — a distinction the project keeps throughout.
 
-> This project began as a product-category **classifier**. That classifier is
-> now a component (the image signal), and the original "do attributes help
-> classification?" study is retained as a documented [appendix](#appendix-the-classification-sub-experiment).
-> The full kickoff contract lives in [`docs/requirement.md`](docs/requirement.md).
+> The full kickoff contract — scenario, personas, success criteria — lives in
+> [`docs/requirement.md`](docs/requirement.md).
 
 ![Data-product overview](docs/project_pipeline.png)
 
@@ -103,7 +101,7 @@ via the public Hugging Face mirror [`ashraq/fashion-product-images-small`](https
   measure similarity identically. The category signal is injectable, so the live
   app supplies the image model's prediction while the offline evaluation supplies
   the ground-truth category — isolating retrieval quality from classifier error
-  (the classifier's own accuracy, ~93%, is reported in the appendix).
+  (the image classifier's own accuracy is ~93%).
 
 ### Two interaction modes, one agent
 
@@ -183,12 +181,12 @@ src/
   agent.py         the tool-calling agent: classify_product + search_similar_products
   inference.py     shared predict() / predict_with_contract() for the image signal
   data.py          dataset load, resize/transform, stratified split, caching
-  models.py        BaselineImageModel (the shipped image signal), MultiModalProductClassifier
+  models.py        ImageClassifier — the CNN that predicts subcategory from the photo
   contract.py      output data contract + validator
   train.py / evaluate.py / aggregate.py / run_all.py   train + evaluate the image signal
 notebooks/
   01_eda.ipynb         catalog description (Descriptive pillar)
-  02_case_study.ipynb  the classification sub-experiment, executed end to end
+  02_case_study.ipynb  the recommender case study, executed end to end
 tests/             pytest: recommender metrics + relevance, data contract, model sanity
 artifacts/         reco_metrics_summary.json + the classifier's aggregated metrics
 docs/              requirement.md, architecture diagrams, app screenshots
@@ -264,29 +262,9 @@ recommendation cutoff.
   one embedding model (`all-MiniLM-L6-v2`, cosine), so they measure similarity
   identically; the Chroma index here is a representative 5,000-item slice, not a
   production-scale ANN deployment.
-- **Out-of-distribution photos.** The image signal is trained on catalog-style
-  photos; a differently-shot image can be confidently misclassified (documented
-  in the appendix), which would mis-route the category boost. A deployment gate
-  needs a separate OOD evaluation set.
-
-## Appendix: the classification sub-experiment
-
-Before the recommender, this project asked a narrower question: does adding a
-product's structured attributes to its photo improve **classification** of
-`subCategory`? The answer, across 3 seeds plus an attribute ablation and a
-longer 25-epoch run, was **no** — the image-only model wins on every metric and
-is far more stable. That negative result is *why the recommender's image signal
-is the image-only baseline*, not the multi-modal variant.
-
-| | Baseline (image only) | Proposed (image + attributes) |
-|---|---|---|
-| Accuracy | **93.1% ± 0.03%** | 88.3% ± 0.9% |
-| Macro F1 | **0.854 ± 0.002** | 0.803 ± 0.007 |
-| Weighted F1 | **0.935 ± 0.0001** | 0.897 ± 0.005 |
-
-A documented failure from that study, kept because it is instructive: a stock
-photo of a white sneaker, shot differently than the catalog, was classified as
-"Bags" at 94.7% confidence — confidently wrong, the reason an OOD evaluation set
-is on the next-steps list. The model architecture for the comparison:
-
-![Model architecture](docs/model_architecture.png)
+- **Out-of-distribution photos.** The image classifier is trained on
+  catalog-style photos (plain background, fixed framing). A differently-shot
+  image can be confidently misclassified — in one test a stock photo of a white
+  sneaker was labeled "Bags" at 94.7% confidence — which would mis-route the
+  category boost. A deployment gate needs a separate out-of-distribution
+  evaluation set.
