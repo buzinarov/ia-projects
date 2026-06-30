@@ -25,7 +25,51 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install numpy scikit-learn pytest
+          pip install pandas numpy scikit-learn pytest
 
       - name: Run tests
+        run: pytest -v
+
+  tests-car-review-intelligence:
+    name: tests (car-review-intelligence)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: car-review-intelligence
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies (no model downloads)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scikit-learn pytest
+
+      - name: Run tests (skill smoke tests skipped without RUN_MODEL_TESTS)
+        run: pytest -v
+
+  tests-customer-feedback-intelligence:
+    name: tests (customer-feedback-intelligence)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: customer-feedback-intelligence
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies (no torch/encoder needed)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scikit-learn pytest
+
+      - name: Run tests (model + Chroma tests skip without those deps)
         run: pytest -v

@@ -135,8 +135,6 @@ Reproduce with `python -m src.evaluate_reco --n-queries 1000 --ks 5 10`
 
 **Analysis (carried into the README):**
 
-- The margin survived removing an evaluation leak (an early version indexed the
-  `articleType` relevance label verbatim and scored a misleading 0.97 precision@5).
 - Recall is low by construction — proxy-relevant pools far exceed k — so
   precision and NDCG are the meaningful metrics.
 - This is a content-recovery result, not a preference result; a real revenue/
@@ -148,3 +146,10 @@ motivating KPIs with an online A/B test before claiming business value. OKRs:
 *Objective* — make suggested-product genuinely useful; *Key Results* — (1) hybrid
 live behind a feature flag, (2) A/B test on click-through and add-to-cart,
 (3) a calibrated relevance threshold for the recommendation cutoff.
+
+**Implementation note.** The live storefront's text-search path calls the
+retrieval signal directly rather than routing through the LLM agent — a
+deliberate choice made after testing showed the local model occasionally
+fabricated product names in its prose. The agent/tool-calling design described
+above is fully implemented and demonstrated in
+`notebooks/02_case_study.ipynb`.

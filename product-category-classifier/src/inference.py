@@ -54,9 +54,18 @@ def attrs_to_onehot(attrs, maps):
 
 
 @torch.no_grad()
-def predict(model, maps, device, pil_image, attrs):
+def predict(model, maps, device, pil_image, attrs=None):
+    """attrs is optional: the image classifier ignores the attribute
+    vector entirely (see models.ImageClassifier.forward), so a caller
+    with only a photo -- no known catalog attributes -- still gets a
+    prediction. When attrs is provided it is still validated and
+    encoded, so callers that do have catalog metadata keep it attached
+    to the contract record."""
     image_tensor = preprocess_image(pil_image).to(device)
-    attr_tensor = attrs_to_onehot(attrs, maps).to(device)
+    if attrs:
+        attr_tensor = attrs_to_onehot(attrs, maps).to(device)
+    else:
+        attr_tensor = torch.zeros(1, maps["attribute_dim"], device=device)
     logits = model(image_tensor, attr_tensor)
     probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
     classes = maps["target_classes"]
@@ -68,12 +77,12 @@ def predict(model, maps, device, pil_image, attrs):
     }
 
 
-def predict_with_contract(model, maps, device, pil_image, attrs, model_name, product_id=None):
+def predict_with_contract(model, maps, device, pil_image, *, attrs=None, model_name, product_id=None):
     """Same as predict(), but returns a contract-compliant record
     (src/contract.py) instead of the raw probabilities dict -- this is
     what should feed any downstream consumer (the agent's tool output,
     a future batch-scoring pipeline), since 'probabilities' isn't part
-    of the data contract."""
+    of the data contract. attrs is optional, same as predict()."""
     result = predict(model, maps, device, pil_image, attrs)
     return build_prediction_record(
         predicted_class=result["predicted_class"],

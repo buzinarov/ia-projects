@@ -1,6 +1,10 @@
 """The local tool-calling agent behind the suggested-product surface,
 served by Ollama (no external API, no API key -- keeps this safe to run
-from a public repo).
+from a public repo). Demonstrated end to end in
+notebooks/02_case_study.ipynb; the live storefront app calls the
+recommender's retrieval directly instead of routing through this agent,
+to keep its responses deterministic and free of hallucination risk (see
+README -> "Two interaction modes").
 
 It powers the two interaction modes the recommender supports: a user can
 describe what they want in natural language, or attach a product photo.
@@ -39,9 +43,8 @@ catalog items in front of the shopper, grounding every suggestion in tool
 results -- never in assumed product knowledge.
 
 # Tools
-- `classify_product(image_path, gender, baseColour, season, usage)` -> predicts a
-  photographed product's subcategory with a trained vision model. The image
-  signal.
+- `classify_product(image_path)` -> predicts a photographed product's
+  subcategory with a trained vision model. The image signal.
 - `search_similar_products(query, n_results, category?)` -> retrieves catalog
   items by semantic similarity to a free-text description, optionally restricted
   to one subcategory. The metadata-similarity signal.
@@ -61,11 +64,10 @@ Decide from the user's input which path to take:
 
 # Guardrails
 - Only call `classify_product` when the message explicitly carries an attached
-  image, shown as a line like:
-  `[Attached product image path: ... | attributes: gender=..., baseColour=...,
-  season=..., usage=...]`. Never invent, guess, or use placeholder values for the
-  image path or any attribute. If the user refers to a photo but none is attached,
-  ask them to upload or select one first instead of calling the tool.
+  image, shown as a line like `[Attached product image path: ...]`. Never
+  invent, guess, or use a placeholder image path. If the user refers to a photo
+  but none is attached, ask them to upload or select one first instead of
+  calling the tool.
 - Recommend only items returned by a tool. Do not invent product names, prices,
   availability, or attributes that no tool returned.
 - If a tool returns nothing useful, say so plainly and offer to refine the search
@@ -94,14 +96,6 @@ def _get_vision_model():
 
 
 def _build_tools(maps):
-    attr_props = {
-        col: {
-            "type": "string",
-            "description": f"The product's {col} attribute",
-            "enum": maps["attribute_classes"][col],
-        }
-        for col in maps["attribute_columns"]
-    }
     return [
         {
             "type": "function",
@@ -115,9 +109,8 @@ def _build_tools(maps):
                     "type": "object",
                     "properties": {
                         "image_path": {"type": "string", "description": "Path to the product image file"},
-                        **attr_props,
                     },
-                    "required": ["image_path", *maps["attribute_columns"]],
+                    "required": ["image_path"],
                 },
             },
         },
@@ -148,17 +141,13 @@ def _build_tools(maps):
     ]
 
 
-def _run_classify_product(image_path, **attrs):
+def _run_classify_product(image_path, **_ignored_kwargs):
+    # _ignored_kwargs absorbs anything extra a model might still pass
+    # (e.g. a hallucinated attribute) without erroring -- the classifier
+    # only ever uses the image.
     model, maps, device = _get_vision_model()
     image = Image.open(image_path)
-    missing = [c for c in maps["attribute_columns"] if c not in attrs]
-    if missing:
-        return {"error": f"Missing required attributes: {missing}"}
-    record = predict_with_contract(
-        model, maps, device, image,
-        {col: attrs[col] for col in maps["attribute_columns"]},
-        model_name=VISION_MODEL,
-    )
+    record = predict_with_contract(model, maps, device, image, model_name=VISION_MODEL)
     return record
 
 
@@ -179,20 +168,16 @@ def _execute_tool_call(name, arguments):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-def chat(user_message, history=None, image_path=None, attrs=None, max_tool_rounds=4):
+def chat(user_message, history=None, image_path=None, max_tool_rounds=4):
     """Runs one turn of the agent loop. `history` is a list of prior
-    {"role", "content"} messages (excluding the system prompt). `attrs`
-    is a dict covering all of label_maps.json's attribute_columns,
-    required only if `image_path` is set."""
+    {"role", "content"} messages (excluding the system prompt)."""
     maps = _get_label_maps()
     tools = _build_tools(maps)
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + (history or [])
 
     content = user_message
     if image_path:
-        attrs = attrs or {}
-        attr_str = ", ".join(f"{col}={attrs.get(col, 'unknown')}" for col in maps["attribute_columns"])
-        content += f"\n\n[Attached product image path: {image_path} | attributes: {attr_str}]"
+        content += f"\n\n[Attached product image path: {image_path}]"
     messages.append({"role": "user", "content": content})
 
     tool_trace = []

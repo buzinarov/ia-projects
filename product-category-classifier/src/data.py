@@ -5,10 +5,11 @@ a public mirror of the Kaggle "Fashion Product Images (Small)" dataset.
 Public, no auth required.
 
 Target and attribute columns are generic by design: TARGET_COLUMN is
-whatever the model predicts, ATTRIBUTE_COLUMNS are whatever structured
-fields feed the model's second modality. Both are persisted into
-label_maps.json so downstream code (models.py, inference.py, the app,
-the agent) never hardcodes a column name.
+whatever the model predicts, ATTRIBUTE_COLUMNS are the structured fields
+cached alongside it. The image classifier itself ignores them (it only
+sees the photo); they exist for inference.py's data contract and the
+recommender's category-signal plumbing. Both are persisted into
+label_maps.json so downstream code never hardcodes a column name.
 """
 import json
 from collections import Counter
@@ -136,12 +137,13 @@ def prepare_dataset(force_rebuild=False):
 
 
 class FashionProductDataset(Dataset):
-    """Returns ((image_tensor, attr_onehot), label) to match the
-    multi-input model's forward signature: model(x_image, x_attr).
+    """Returns ((image_tensor, attr_onehot), label). The image classifier's
+    forward(x_image, x_attr) accepts and ignores attr_onehot, so every
+    caller shares one signature; inference.py reconstructs this same
+    one-hot vector for the data contract when attributes are available.
 
     attr_onehot is the concatenation of one-hot vectors for each column
-    in `attribute_columns`, in that exact order -- inference.py and
-    agent.py must reconstruct the vector the same way at predict time.
+    in `attribute_columns`, in that exact order.
     """
 
     def __init__(self, images, attr_idx, label_idx, attribute_classes, attribute_columns, augment=False, rng=None):
@@ -174,24 +176,19 @@ class FashionProductDataset(Dataset):
         return (img_tensor, attr_onehot), label
 
 
-def get_dataloaders(batch_size=64, subset_frac=1.0, num_workers=0, seed=0, attribute_columns=None):
+def get_dataloaders(batch_size=64, subset_frac=1.0, num_workers=0, seed=0):
     """Loads the cached dataset, splits 70/15/15 (stratified by label,
     using the fixed SPLIT_SEED), and returns
     (train_loader, val_loader, test_loader, label_maps).
 
     `seed` only affects shuffling/augmentation randomness, not the split.
-    `attribute_columns` lets a caller use a subset of the cached
-    attribute columns (e.g. for an ablation sweep) without needing a
-    separate cache -- every attribute is cached independently, so any
-    subset of ATTRIBUTE_COLUMNS can be selected at load time.
     """
     prepare_dataset()
     maps = load_label_maps()
-    attribute_columns = attribute_columns or ATTRIBUTE_COLUMNS
 
     images = np.load(IMAGES_CACHE)
     label_idx = np.load(LABEL_CACHE)
-    attr_idx = {col: np.load(_attr_cache_path(col)) for col in attribute_columns}
+    attr_idx = {col: np.load(_attr_cache_path(col)) for col in ATTRIBUTE_COLUMNS}
 
     n = len(images)
     indices = np.arange(n)
@@ -210,10 +207,10 @@ def get_dataloaders(batch_size=64, subset_frac=1.0, num_workers=0, seed=0, attri
     def make_dataset(idx, augment, rng=None):
         return FashionProductDataset(
             images[idx],
-            {col: attr_idx[col][idx] for col in attribute_columns},
+            {col: attr_idx[col][idx] for col in ATTRIBUTE_COLUMNS},
             label_idx[idx],
             maps["attribute_classes"],
-            attribute_columns,
+            ATTRIBUTE_COLUMNS,
             augment=augment,
             rng=rng,
         )

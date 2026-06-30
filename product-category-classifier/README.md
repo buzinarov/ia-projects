@@ -103,17 +103,24 @@ via the public Hugging Face mirror [`ashraq/fashion-product-images-small`](https
   the ground-truth category — isolating retrieval quality from classifier error
   (the image classifier's own accuracy is ~93%).
 
-### Two interaction modes, one agent
+### Two interaction modes: text and photo
 
-A local tool-calling agent (Ollama, running entirely on-device — no external API
-and no keys to manage) turns either input into recommendations:
+The recommender accepts a query as free text or as a product photo. Both paths
+are implemented and demonstrated end to end by a local tool-calling agent
+(Ollama, on-device — no external API, no keys to manage) in
+[`notebooks/02_case_study.ipynb`](notebooks/02_case_study.ipynb): it calls
+`search_similar_products` for a description, or `classify_product` followed by a
+category-scoped `search_similar_products` for a photo.
 
-- **Describe it** → the agent calls `search_similar_products` on the description.
-- **Show it** → the agent calls `classify_product` on the photo, then
-  `search_similar_products` *within the predicted subcategory*.
-
-The agent decides which tools a message needs; the recommender composes the
-ranking.
+The live storefront takes a narrower, deliberate path: its chat calls the
+retrieval signal directly instead of routing through the LLM. Early testing
+showed the small local model would occasionally narrate invented product names
+alongside the real results — fine in a notebook demo, not acceptable on a
+product surface. The storefront keeps the LLM out of the response path
+entirely, so what it shows is always exactly what retrieval returned. The
+trade-off is explicit: the agent's tool-calling architecture is the more
+general design, proven in the notebook; the storefront ships the narrower,
+hallucination-free path for the surface end users actually touch.
 
 ### The relevance proxy — and its honest limitation
 
@@ -178,7 +185,7 @@ src/
   embeddings.py    shared sentence-encoder (all-MiniLM-L6-v2, cosine) for eval AND serving
   evaluate_reco.py offline ranking metrics (precision@k / recall@k / NDCG@k), baseline vs proposed
   rag.py           Chroma index over catalog metadata (the live similarity signal, cosine)
-  agent.py         the tool-calling agent: classify_product + search_similar_products
+  agent.py         tool-calling agent (classify_product + search_similar_products), demonstrated in the case-study notebook
   inference.py     shared predict() / predict_with_contract() for the image signal
   data.py          dataset load, resize/transform, stratified split, caching
   models.py        ImageClassifier — the CNN that predicts subcategory from the photo
@@ -208,7 +215,7 @@ python -m src.run_all --seeds 0 1 2 --epochs 25            # trains the image si
 python -m src.evaluate_reco --category-signal image
 
 pytest                       # recommender + contract tests always run; image tests skip without checkpoints
-ollama pull llama3.1:8b      # the agent needs a local Ollama model
+ollama pull llama3.1:8b      # only for the agent demo in notebooks/02_case_study.ipynb
 ```
 
 ## Results

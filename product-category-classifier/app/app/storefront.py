@@ -6,7 +6,7 @@ Two market-standard recommendation patterns drive it:
   - item-to-item "find similar" (more like this product)     -> hybrid ranking
 
 Every product shown is a real catalog item with its real photo; the chat
-assistant's prose is grounded in the retrieved results, never invented.
+assistant's prose is grounded in the retrieved results.
 """
 import asyncio
 
