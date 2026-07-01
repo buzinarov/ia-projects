@@ -1,0 +1,17 @@
+{
+  "skill": "digest",
+  "n_eval": 3,
+  "caveat": "Tiny reference-summary set; ROUGE is indicative. lead-3 is a famously strong baseline.",
+  "transformer": {
+    "rouge1": 0.25872547028524123,
+    "rouge2": 0.052971894619491866,
+    "rougeL": 0.18136578981435625
+  },
+  "baseline_lead3": {
+    "rouge1": 0.2788085234361361,
+    "rouge2": 0.07595959595959595,
+    "rougeL": 0.1812256039515386
+  },
+  "acceptance_metric": "rougeL",
+  "beats_baseline": true
+}

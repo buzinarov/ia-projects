@@ -1,0 +1,25 @@
+{
+  "skill": "translate",
+  "n_eval": 4,
+  "caveat": "Tiny hand-built reference set; BLEU is brittle on short text, chrF reported alongside. Indicative only.",
+  "bleu": 54.91799111633453,
+  "chrf": 75.35186409099455,
+  "examples": [
+    {
+      "source": "I love this car. It is comfortable and reliable.",
+      "hypothesis": "Me encanta este coche. Es c\u00f3modo y confiable."
+    },
+    {
+      "source": "The car broke down after a week. Terrible experience.",
+      "hypothesis": "El coche se averi\u00f3 despu\u00e9s de una semana, una experiencia terrible."
+    },
+    {
+      "source": "Great fuel economy and a smooth ride for the whole family.",
+      "hypothesis": "Gran ahorro de combustible y un viaje suave para toda la familia."
+    },
+    {
+      "source": "The dealership service was slow and the staff were unhelpful.",
+      "hypothesis": "El servicio de concesionarios era lento y el personal no ayudaba."
+    }
+  ]
+}

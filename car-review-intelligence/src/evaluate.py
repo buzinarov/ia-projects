@@ -34,6 +34,8 @@ def _write_artifact(name, summary):
 def evaluate_triage(n=500, seed=42):
     """Score the transformer triage skill against VADER and majority-class
     on a held-out, rating-derived-label slice of the Edmunds data."""
+    import torch  # noqa: F401  -- load torch's DLLs before scipy/sklearn to
+    # avoid a Windows OMP/MKL DLL clash that fails c10.dll init (WinError 1114)
     from sklearn.metrics import accuracy_score, f1_score
 
     from .data import label_balance, load_labeled_reviews, train_eval_split
@@ -161,6 +163,8 @@ def evaluate_answer():
 def evaluate_digest():
     """Score the transformer summarizer against the lead-3 baseline with
     ROUGE-1/2/L on the reference-summary set."""
+    import torch  # noqa: F401  -- see evaluate_triage: load torch before the
+    # scipy/nltk stack rouge_score pulls in, to dodge the c10.dll DLL clash
     from rouge_score import rouge_scorer
 
     from .baselines import lead_n_summary

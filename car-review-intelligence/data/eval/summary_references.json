@@ -1,0 +1,17 @@
+{
+  "_note": "Small reference-summary set for the Digest skill, used to score the transformer against the lead-3 baseline with ROUGE. Reference summaries are human-written abstractions of each review. Tiny and indicative, not a benchmark.",
+  "examples": [
+    {
+      "review": "I have owned this SUV for two years now and it has been excellent for our family of five. The third row is genuinely usable for adults on short trips, the cargo space swallows a week of groceries plus a stroller, and we have had zero mechanical issues. Fuel economy on the highway is reasonable for the size. The only downside is that the infotainment system feels dated and the Bluetooth occasionally drops calls.",
+      "reference": "A reliable, spacious family SUV with a usable third row and ample cargo, let down only by a dated infotainment system."
+    },
+    {
+      "review": "This was the worst car-buying experience of my life. The salesperson was pushy, the financing terms changed twice between the test drive and signing, and when I picked the car up there was a scratch on the door that nobody would take responsibility for. The car itself drives fine, but I would never buy from this dealership again because of how I was treated.",
+      "reference": "The car drives fine, but a pushy salesperson, shifting financing terms, and an unaddressed scratch made for a terrible dealership experience."
+    },
+    {
+      "review": "After test driving several electric vehicles, I settled on this one for the range and the charging network. Six months in, the real-world range matches the estimate even in cold weather, and road trips are painless thanks to fast chargers along my usual routes. The acceleration still makes me smile every morning. I do wish the trunk were a little larger.",
+      "reference": "An electric vehicle praised for accurate real-world range, a convenient charging network, and fun acceleration, with only a small trunk as a drawback."
+    }
+  ]
+}

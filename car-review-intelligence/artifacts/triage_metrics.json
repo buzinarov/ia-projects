@@ -1,0 +1,23 @@
+{
+  "skill": "triage",
+  "n_eval": 500,
+  "label_proxy": "Rating>=4 POSITIVE, <=2 NEGATIVE, 3 dropped (NOT human-annotated sentiment)",
+  "eval_label_balance": {
+    "POSITIVE": 0.928,
+    "NEGATIVE": 0.072
+  },
+  "transformer": {
+    "accuracy": 0.776,
+    "macro_f1": 0.6270247229326513
+  },
+  "baseline_vader": {
+    "accuracy": 0.878,
+    "macro_f1": 0.6807987357536813
+  },
+  "baseline_majority_class": {
+    "accuracy": 0.928,
+    "macro_f1": 0.48132780082987553
+  },
+  "acceptance_metric": "macro_f1",
+  "beats_baseline": false
+}

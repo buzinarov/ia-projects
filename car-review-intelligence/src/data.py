@@ -38,9 +38,9 @@ RATING_COLUMN = "Rating"
 
 CACHE_PATH = PROCESSED_DIR / "edmunds_labeled.parquet"
 
-# The original DataCamp exercise's five hand-picked reviews, retained as a
-# fixed demo set for the QA / translation examples (positions matter: the
-# 2nd review emphasizes the brand, the last is summarized).
+# The original five hand-picked demo reviews, retained as a fixed demo set
+# for the QA / translation examples (positions matter: the 2nd review
+# emphasizes the brand, the last is summarized).
 DEMO_CSV = DATA_DIR / "car_reviews.csv"
 
 
@@ -60,11 +60,18 @@ def rating_to_label(rating):
 
 
 def _load_raw():
-    """Load the Edmunds dataset from the Hub as a pandas DataFrame."""
-    from datasets import load_dataset
+    """Load the Edmunds dataset from the Hub as a pandas DataFrame.
 
-    ds = load_dataset(HF_DATASET, split="train")
-    return ds.to_pandas()
+    The published train.csv trips the `datasets` library's strict CSV parser
+    ("Buffer overflow ... malformed input" -- unescaped quotes / very long
+    review fields), the same failure noted on the dataset card. We download the
+    raw file and parse it with pandas' tolerant python engine, skipping the
+    handful of malformed lines rather than failing the whole load.
+    """
+    from huggingface_hub import hf_hub_download
+
+    path = hf_hub_download(repo_id=HF_DATASET, filename="train.csv", repo_type="dataset")
+    return pd.read_csv(path, engine="python", on_bad_lines="skip")
 
 
 def load_labeled_reviews(force_rebuild=False, max_chars=2000):
@@ -119,8 +126,8 @@ def label_balance(df):
 def load_demo_reviews():
     """Load the original five-review demo CSV if present, else return None.
 
-    The file uses ';' as the delimiter (DataCamp's format) with columns
-    Review and Class. Returns a DataFrame with columns review, label.
+    The file uses ';' as the delimiter (the original demo format) with
+    columns Review and Class. Returns a DataFrame with columns review, label.
     """
     if not DEMO_CSV.exists():
         return None

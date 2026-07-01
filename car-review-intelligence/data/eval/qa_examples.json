@@ -1,0 +1,25 @@
+{
+  "_note": "Small hand-labeled extractive-QA set for the Answer skill. Illustrative, not a benchmark. Each gold answer is a span that appears in the context; scoring is token-F1 / exact-match over normalized text.",
+  "examples": [
+    {
+      "context": "I bought this Toyota because of the brand's reputation for reliability. After 60,000 miles it has never let me down, and the resale value held up better than any car I've owned.",
+      "question": "Why did the customer choose this brand?",
+      "answers": ["reputation for reliability", "the brand's reputation for reliability"]
+    },
+    {
+      "context": "The infotainment system is the best part of this car. The touchscreen is responsive and pairing my phone took seconds.",
+      "question": "What did the customer like most?",
+      "answers": ["The infotainment system", "infotainment system"]
+    },
+    {
+      "context": "My biggest complaint is the fuel economy. On the highway I barely get 22 miles per gallon, which is far worse than advertised.",
+      "question": "What was the customer's biggest complaint?",
+      "answers": ["the fuel economy", "fuel economy"]
+    },
+    {
+      "context": "The seats are upholstered in genuine leather and stay cool even in summer thanks to the ventilation.",
+      "question": "What material are the seats made of?",
+      "answers": ["genuine leather", "leather"]
+    }
+  ]
+}

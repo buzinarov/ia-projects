@@ -1,0 +1,33 @@
+{
+  "_note": "Small hand-built EN->ES reference set for the Translate skill. Tiny and illustrative, not a benchmark (see docs/requirement.md). Multiple references per item where a natural paraphrase exists, because BLEU rewards reference coverage. References written by a fluent Spanish speaker should replace these before any quality claim.",
+  "pairs": [
+    {
+      "source": "I love this car. It is comfortable and reliable.",
+      "references": [
+        "Me encanta este coche. Es cómodo y fiable.",
+        "Amo este auto. Es cómodo y confiable."
+      ]
+    },
+    {
+      "source": "The car broke down after a week. Terrible experience.",
+      "references": [
+        "El coche se averió después de una semana. Una experiencia terrible.",
+        "El auto se descompuso después de una semana. Experiencia terrible."
+      ]
+    },
+    {
+      "source": "Great fuel economy and a smooth ride for the whole family.",
+      "references": [
+        "Gran economía de combustible y un viaje suave para toda la familia.",
+        "Excelente consumo de combustible y una conducción suave para toda la familia."
+      ]
+    },
+    {
+      "source": "The dealership service was slow and the staff were unhelpful.",
+      "references": [
+        "El servicio del concesionario fue lento y el personal no fue útil.",
+        "La atención del concesionario fue lenta y el personal poco servicial."
+      ]
+    }
+  ]
+}

@@ -33,8 +33,7 @@ The requirement reflects agreements between three roles, not one wish list.
 ## The four skills
 
 Each skill is a pre-trained Hugging Face pipeline wrapped behind the data
-contract. The original DataCamp exercise ran these as four disconnected
-snippets; here each is a tool the routing agent can call, and each is held
+contract. Here each is a tool the routing agent can call, and each is held
 to a baseline and a metric fixed in this document.
 
 | Skill | Job | Model (default) | Baseline to beat | Honest metric |
@@ -75,6 +74,36 @@ number travels with what it can and cannot prove.
   reference set with multiple references where possible, and chrF is
   reported alongside BLEU because BLEU is brittle on short text.
 
+## Results against the bar (first run)
+
+First evaluation (`python -m src.run_all`, transformers 5.12, CPU; full
+per-skill artifacts in `artifacts/*.json`):
+
+| Skill | Acceptance metric | Baseline | Transformer | Verdict |
+|---|---|---|---|---|
+| **Triage** | macro-F1 (n=500) | VADER **0.68** | 0.63 | **bar NOT cleared** |
+| **Digest** | ROUGE-L (n=3) | lead-3 **0.181** | 0.181 | tie (lead-3 wins ROUGE-1/2) |
+| **Translate** | BLEU / chrF (n=4) | — | 54.9 / 75.4 | indicative |
+| **Answer** | token-F1 / EM (n=4) | — | 0.75 / 0.75 | indicative |
+
+Read against the bar this document fixed *before* the numbers existed:
+
+- **Triage did not clear the bar.** `distilbert-sst2` (movie-domain) scores
+  macro-F1 0.63 against VADER's 0.68 on the rating-proxy labels, and lower
+  accuracy (0.78 vs 0.88) — it over-predicts "negative" on the
+  majority-positive set. Per this contract that is a **do-not-ship** for the
+  transformer as-is; the recommended path is a car-domain / fine-tuned model,
+  not shipping it because it is a transformer.
+- **Digest ties lead-3** on ROUGE-L (0.181 vs 0.181) and loses ROUGE-1/2. The
+  bar explicitly allowed "ship lead-3 and say so" — on this evidence lead-3
+  stays a live option.
+- **Translate / Answer** have no baseline; reported with their honest n=4
+  caveat, not as benchmarks.
+
+This is the acceptance bar working as designed: it turned two "use a
+transformer" defaults into documented, defensible non-wins rather than
+headline claims.
+
 ## Data
 
 [`florentgbelidji/edmunds-car-ratings`](https://huggingface.co/datasets/florentgbelidji/edmunds-car-ratings)
@@ -82,12 +111,6 @@ number travels with what it can and cannot prove.
 `datasets` library, no auth. Columns: `Review_Date`, `Author_Name`,
 `Vehicle_Title`, `Review_Title`, `Review`, `Rating` (1–5 float). ~1K–10K
 rows.
-
-> **License caveat:** the dataset card does not state a license. Treat as
-> *demonstration use, provenance to verify* before any public/commercial
-> redistribution. The five-review `car_reviews.csv` from the original
-> exercise is retained under `data/` as a fixed demo set for the
-> QA/translation examples.
 
 ## What "done" looks like for the prototype
 

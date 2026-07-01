@@ -1,0 +1,45 @@
+{
+  "skill": "answer",
+  "n_eval": 4,
+  "caveat": "Tiny hand-labeled set; illustrative that the skill is wired correctly, not a benchmark.",
+  "exact_match": 0.75,
+  "token_f1": 0.75,
+  "examples": [
+    {
+      "question": "Why did the customer choose this brand?",
+      "prediction": "reputation for reliability",
+      "gold": [
+        "reputation for reliability",
+        "the brand's reputation for reliability"
+      ],
+      "f1": 1.0
+    },
+    {
+      "question": "What did the customer like most?",
+      "prediction": "No answer found in this review.",
+      "gold": [
+        "The infotainment system",
+        "infotainment system"
+      ],
+      "f1": 0.0
+    },
+    {
+      "question": "What was the customer's biggest complaint?",
+      "prediction": "fuel economy",
+      "gold": [
+        "the fuel economy",
+        "fuel economy"
+      ],
+      "f1": 1.0
+    },
+    {
+      "question": "What material are the seats made of?",
+      "prediction": "leather",
+      "gold": [
+        "genuine leather",
+        "leather"
+      ],
+      "f1": 1.0
+    }
+  ]
+}
