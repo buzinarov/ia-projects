@@ -10,7 +10,7 @@ whatever the results happened to be.*
 An online women's-clothing retailer has tens of thousands of free-text customer
 reviews and no structured way to use them. Support agents answer each review
 from scratch; the merchandising team has no quick read on *what* customers keep
-raising. The ask: turn the raw `Review Text` into something a support agent and a
+raising. The ask: turn the raw `Review Text` into          something a support agent and a
 merchandiser can act on — without standing up a labeling operation first.
 
 ## Personas
@@ -19,7 +19,7 @@ merchandiser can act on — without standing up a labeling operation first.
 |---|---|---|
 | **Customer Support Lead** | Reply quality and speed | Triaging an incoming review to a theme, reading its sentiment, and seeing similar past cases so replies are fast and consistent |
 | **Merchandising / Product Manager** | Product and catalog decisions | A quick, honest read of what customers talk about (quality, fit, style, comfort, value, look) |
-| **Senior AI / ML Engineer** | The embedding pipeline, evaluation rigor, the honesty boundary | Defensible metrics, an honest baseline, one set of vectors shared by eval and product, no API keys in a public repo |
+| **Senior AI / ML Engineer** | The embedding pipeline, evaluation rigor, the honesty boundary | Defensible metrics, an honest baseline, one set of vectors shared by eval and product|
 
 ## Objective
 
@@ -33,8 +33,9 @@ the four capabilities from the brief:
 4. **Similarity search** — given a review, return the closest past reviews, so a
    support agent can answer in a consistent, personalized way.
 
-Surfaced through a working **Support Console** app, and documented in two
-notebooks (EDA + the four deliverables).
+Surfaced through a working **Review Reply Assistant** app (paste a review → get a
+ready-to-edit reply), and documented in two notebooks (EDA + the four
+deliverables).
 
 ## The honesty boundary
 

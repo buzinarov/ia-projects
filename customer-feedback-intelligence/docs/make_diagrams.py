@@ -74,7 +74,7 @@ def project_pipeline():
 
     # Right: the app
     _box(ax, 9.7, 3.0, 3.4, 1.5,
-         "Support Console\n\nincoming review →\ntheme · sentiment ·\n3 similar cases · routing",
+         "Reply Assistant\n\nincoming review →\ntopic · mood · 3 similar\ncases → drafted reply",
          TEAL, fc="#e6f4f1", fontsize=9.5, weight="bold")
     for cy in (4.75, 3.45, 2.15):
         _arrow(ax, (6.05, cy), (8.0, 3.2))

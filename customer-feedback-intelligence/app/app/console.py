@@ -1,9 +1,11 @@
-"""The Support Console: paste a customer review, get its theme, a sentiment
-read from the nearest past reviews, the 3 most similar reviews, and a routing
-suggestion -- so an agent can triage and reply faster and more consistently.
+"""Review Reply Assistant: paste a customer's review and get a ready-to-edit
+reply, drafted from the review's topic, the customer's mood, and how comparable
+past reviews read. A support agent's whole task -- understand it, then respond --
+on one screen.
 
-Everything on screen comes from real reviews and the project's own retrieval;
-the routing/tone line is a transparent rule, not generated text.
+The draft is written by a local LLM (Ollama), grounded in the detected topic and
+mood, with a transparent template fallback if Ollama isn't running -- no external
+API and no keys.
 """
 import asyncio
 
@@ -12,31 +14,35 @@ import reflex as rx
 from .support_service import get_service
 
 ACCENT = "teal"
-
 EXAMPLE_HINT = "Absolutely wonderful - silky and sexy and comfortable"
-
-THEME_COLORS = {
-    "Quality": "amber", "Fit": "indigo", "Style": "purple",
-    "Comfort": "teal", "Value": "green", "Look": "pink",
-}
 
 
 class ConsoleState(rx.State):
     review_text: str = EXAMPLE_HINT
-    result: dict = {}
+    draft: str = ""
+    draft_source: str = ""
+    topic: str = ""
+    mood_label: str = ""
+    positive: bool = True
+    priority: str = ""
+    route_to: str = ""
+    avg_rating: str = ""
     similar: list[dict[str, str]] = []
+    examples: list[dict[str, str]] = []
+    distribution: list[dict[str, str]] = []
     analyzed: bool = False
     loading: bool = False
-    distribution: list[dict[str, str]] = []
-    examples: list[dict[str, str]] = []
 
     async def load_default(self):
         svc = await asyncio.to_thread(get_service)
-        self.distribution = svc.theme_distribution()
         self.examples = svc.examples()
+        self.distribution = svc.theme_distribution()
 
     def set_review_text(self, value: str):
         self.review_text = value
+
+    def set_draft(self, value: str):
+        self.draft = value
 
     def use_example(self, text: str):
         self.review_text = text
@@ -48,37 +54,57 @@ class ConsoleState(rx.State):
         self.loading = True
         yield
         svc = await asyncio.to_thread(get_service)
-        result = await asyncio.to_thread(svc.analyze, text, 3)
+        r = await asyncio.to_thread(svc.analyze, text, 3)
+        self.topic = r["topic"]
+        self.mood_label = r["mood_label"]
+        self.positive = r["positive"]
+        self.priority = r["priority"]
+        self.route_to = r["route_to"]
+        self.avg_rating = f"{r['avg_rating']}"
+        self.draft = r["draft"]
+        self.draft_source = r["draft_source"]
         self.similar = [
-            {
-                "review": h["review"],
-                "department": h["department"] or "—",
-                "rating": str(h["rating"]),
-                "similarity": str(h["similarity"]),
-            }
-            for h in result.pop("similar")
+            {"review": h["review"], "department": h["department"] or "—",
+             "rating": str(h["rating"])}
+            for h in r["similar"]
         ]
-        self.result = result
         self.analyzed = True
         self.loading = False
 
 
-# -- components ---------------------------------------------------------------
+# -- small building blocks ----------------------------------------------------
 def _navbar() -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.icon("messages-square", size=22, color=rx.color(ACCENT, 9)),
-            rx.heading("Customer-Feedback Intelligence", size="5", weight="bold"),
-            rx.badge("Support console", color_scheme=ACCENT, variant="soft", radius="full"),
+            rx.icon("mail", size=22, color=rx.color(ACCENT, 9)),
+            rx.heading("Review Reply Assistant", size="5", weight="bold"),
+            rx.badge("Customer Care", color_scheme=ACCENT, variant="soft", radius="full"),
             rx.spacer(),
             rx.color_mode.button(),
-            width="100%",
-            align="center",
-            padding="0.8em 1.6em",
+            width="100%", align="center", padding="0.8em 1.6em",
         ),
         border_bottom=f"1px solid {rx.color('gray', 4)}",
         position="sticky", top="0", background=rx.color("gray", 1),
         backdrop_filter="blur(6px)", z_index="100", width="100%",
+    )
+
+
+def _step(n: str, label: str) -> rx.Component:
+    return rx.hstack(
+        rx.center(rx.text(n, size="1", weight="bold", color="white"),
+                  width="20px", height="20px", border_radius="999px",
+                  background=rx.color(ACCENT, 9)),
+        rx.text(label, size="3", weight="bold"),
+        spacing="2", align="center",
+    )
+
+
+def _chip(icon: str, label: rx.Var, value: rx.Var, color: str = "gray") -> rx.Component:
+    return rx.hstack(
+        rx.icon(icon, size=15, color=rx.color(color, 9)),
+        rx.text(label, size="1", color_scheme="gray"),
+        rx.badge(value, color_scheme=color, variant="soft", size="2"),
+        spacing="2", align="center",
     )
 
 
@@ -92,139 +118,145 @@ def _example_chip(item: rx.Var) -> rx.Component:
     )
 
 
-def _similar_card(item: rx.Var) -> rx.Component:
+def _evidence_card(item: rx.Var) -> rx.Component:
     return rx.box(
         rx.hstack(
-            rx.badge(item["similarity"], color_scheme=ACCENT, variant="soft"),
-            rx.badge(item["department"], color_scheme="gray", variant="soft"),
-            rx.spacer(),
             rx.hstack(
                 rx.icon("star", size=13, color=rx.color("amber", 9)),
                 rx.text(item["rating"], size="1", weight="medium"),
                 spacing="1", align="center",
             ),
+            rx.badge(item["department"], color_scheme="gray", variant="soft"),
             width="100%", align="center",
         ),
-        rx.text(item["review"], size="2", margin_top="0.4em",
-                color=rx.color("gray", 11)),
+        rx.text(item["review"], size="2", margin_top="0.4em", color=rx.color("gray", 11)),
         padding="0.8em", border_radius="12px",
         border=f"1px solid {rx.color('gray', 4)}", background=rx.color("gray", 1),
         width="100%",
     )
 
 
-def _stat(label: str, value: rx.Var, color: str = "gray") -> rx.Component:
-    return rx.vstack(
-        rx.text(label, size="1", color_scheme="gray"),
-        rx.badge(value, color_scheme=color, variant="soft", size="2"),
-        spacing="1", align="start",
+# -- the "read" + the reply ---------------------------------------------------
+def _analysis_row() -> rx.Component:
+    return rx.flex(
+        _chip("tag", "Topic", ConsoleState.topic, ACCENT),
+        _chip(rx.cond(ConsoleState.positive, "smile", "frown"),
+              "Customer", ConsoleState.mood_label,
+              rx.cond(ConsoleState.positive, "green", "amber")),
+        _chip("flag", "Priority", ConsoleState.priority,
+              rx.cond(ConsoleState.priority == "High", "red", "gray")),
+        _chip("users", "Send to", ConsoleState.route_to, "indigo"),
+        spacing="6", wrap="wrap",
+        padding="0.9em 1em", border_radius="12px",
+        background=rx.color("gray", 2), width="100%",
     )
 
 
-def _result_panel() -> rx.Component:
-    r = ConsoleState.result
-    return rx.cond(
-        ConsoleState.analyzed,
-        rx.vstack(
-            rx.hstack(
-                _stat("Theme", r["theme"], ACCENT),
-                _stat("Confidence", r["theme_confidence"]),
-                _stat("Sentiment", r["sentiment"],
-                      rx.cond(r["sentiment"] == "Positive", "green", "red")),
-                _stat("Avg rating (neighbors)", r["neighbor_avg_rating"], "amber"),
-                spacing="5", wrap="wrap",
-            ),
-            rx.box(
-                rx.hstack(
-                    rx.icon("route", size=16, color=rx.color(ACCENT, 9)),
-                    rx.text("Route to ", size="2"),
-                    rx.text(r["route_to"], size="2", weight="bold"),
-                    spacing="1", align="center",
-                ),
-                rx.text(r["suggested_stance"], size="2", color_scheme="gray", margin_top="0.2em"),
-                rx.text(rx.text.span("Suggested tone: ", weight="medium"),
-                        r["suggested_tone"],
-                        size="1", color_scheme="gray", margin_top="0.2em", font_style="italic"),
-                padding="0.9em", border_radius="12px",
-                background=rx.color(ACCENT, 2), border=f"1px solid {rx.color(ACCENT, 5)}",
-                width="100%",
-            ),
-            rx.text("3 most similar past reviews", size="2", weight="bold",
-                    margin_top="0.4em"),
-            rx.foreach(ConsoleState.similar, _similar_card),
-            spacing="3", align="stretch", width="100%",
-        ),
-        rx.center(
-            rx.cond(
-                ConsoleState.loading,
-                rx.spinner(size="3"),
-                rx.text("Paste a review and hit Analyze.", color_scheme="gray"),
-            ),
-            min_height="220px", width="100%",
-        ),
-    )
-
-
-def _analyzer() -> rx.Component:
+def _reply_block() -> rx.Component:
     return rx.vstack(
-        rx.heading("Triage an incoming review", size="5"),
-        rx.text("Assign a theme, read sentiment from the nearest past reviews, and "
-                "pull the 3 most similar cases for a consistent reply.",
-                size="2", color_scheme="gray"),
+        rx.hstack(
+            _step("2", "Suggested reply"),
+            rx.spacer(),
+            rx.text("edit before sending", size="1", color_scheme="gray", font_style="italic"),
+            width="100%", align="center",
+        ),
         rx.text_area(
-            value=ConsoleState.review_text,
-            on_change=ConsoleState.set_review_text,
-            placeholder="Paste a customer review…",
-            rows="4", width="100%", size="3",
+            value=ConsoleState.draft, on_change=ConsoleState.set_draft,
+            rows="9", width="100%", size="3",
+            style={"lineHeight": "1.5"},
         ),
         rx.hstack(
-            rx.button(rx.icon("wand-sparkles", size=16), "Analyze",
-                      on_click=ConsoleState.analyze, loading=ConsoleState.loading,
-                      color_scheme=ACCENT, size="3"),
+            rx.button(rx.icon("copy", size=15), "Copy reply",
+                      on_click=rx.set_clipboard(ConsoleState.draft),
+                      color_scheme=ACCENT, size="2"),
             rx.spacer(),
-            width="100%",
+            rx.hstack(
+                rx.icon("sparkles", size=13, color=rx.color(ACCENT, 9)),
+                rx.text(ConsoleState.draft_source, size="1", color_scheme="gray"),
+                spacing="1", align="center",
+            ),
+            width="100%", align="center",
         ),
-        rx.text("Try one:", size="1", color_scheme="gray"),
-        rx.hstack(rx.foreach(ConsoleState.examples, _example_chip),
-                  wrap="wrap", spacing="2"),
-        rx.divider(margin_y="0.6em"),
-        _result_panel(),
+        rx.text("Based on 3 similar past reviews", size="2", weight="bold",
+                margin_top="0.4em"),
+        rx.foreach(ConsoleState.similar, _evidence_card),
         spacing="3", align="stretch", width="100%",
     )
 
 
-def _dist_row(item: rx.Var) -> rx.Component:
-    return rx.hstack(
-        rx.text(item["theme"], size="1", width="64px"),
+def _results() -> rx.Component:
+    return rx.cond(
+        ConsoleState.analyzed,
+        rx.vstack(_analysis_row(), _reply_block(), spacing="4",
+                  align="stretch", width="100%", margin_top="0.5em"),
+        rx.center(
+            rx.cond(
+                ConsoleState.loading,
+                rx.hstack(rx.spinner(size="3"),
+                          rx.text("Reading the review…", color_scheme="gray")),
+                rx.text("Paste a review and hit “Draft a reply”.", color_scheme="gray"),
+            ),
+            min_height="140px", width="100%",
+        ),
+    )
+
+
+def _tool_card() -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            _step("1", "Paste the customer's review"),
+            rx.text_area(
+                value=ConsoleState.review_text, on_change=ConsoleState.set_review_text,
+                placeholder="Paste a customer review…", rows="4", width="100%", size="3",
+            ),
+            rx.hstack(
+                rx.button(rx.icon("wand-sparkles", size=16), "Draft a reply",
+                          on_click=ConsoleState.analyze, loading=ConsoleState.loading,
+                          color_scheme=ACCENT, size="3"),
+                rx.spacer(), width="100%",
+            ),
+            rx.hstack(
+                rx.text("Try one:", size="1", color_scheme="gray"),
+                rx.foreach(ConsoleState.examples, _example_chip),
+                wrap="wrap", spacing="2", align="center",
+            ),
+            rx.divider(margin_y="0.4em"),
+            _results(),
+            spacing="3", align="stretch", width="100%",
+        ),
+        padding="1.6em", border_radius="16px",
+        border=f"1px solid {rx.color('gray', 4)}", background=rx.color("gray", 1),
+        width="100%",
+    )
+
+
+def _pulse_bar(item: rx.Var) -> rx.Component:
+    return rx.vstack(
+        rx.text(item["theme"], size="1", weight="medium"),
         rx.box(
             rx.box(width=item["width"], height="100%",
                    background=rx.color(ACCENT, 9), border_radius="999px"),
-            width="100%", height="12px", background=rx.color("gray", 4),
+            width="100%", height="8px", background=rx.color("gray", 4),
             border_radius="999px", overflow="hidden",
         ),
-        rx.text(item["width"], size="1", width="48px",
-                color_scheme="gray", text_align="right"),
-        width="100%", align="center", spacing="2",
+        rx.text(item["width"], size="1", color_scheme="gray"),
+        spacing="1", align="start", flex="1", min_width="120px",
     )
 
 
 def _pulse() -> rx.Component:
-    return rx.vstack(
-        rx.heading("Catalog pulse", size="4"),
-        rx.text("What 22,634 reviews talk about (zero-shot theme triage).",
-                size="1", color_scheme="gray"),
-        rx.vstack(rx.foreach(ConsoleState.distribution, _dist_row),
-                  spacing="2", width="100%", margin_y="0.6em"),
-        rx.divider(),
-        rx.text("Review space (t-SNE)", size="2", weight="bold", margin_top="0.4em"),
-        rx.image(src="/topic_map_departments.png", width="100%", border_radius="10px",
-                 border=f"1px solid {rx.color('gray', 4)}"),
-        rx.text("Embeddings cluster by product department — evidence the space is "
-                "semantically meaningful.", size="1", color_scheme="gray"),
-        spacing="2", align="stretch", width="100%",
-        padding="1.2em", border_radius="16px",
+    return rx.box(
+        rx.hstack(
+            rx.icon("chart-no-axes-column", size=16, color=rx.color(ACCENT, 9)),
+            rx.text("What customers write about", size="2", weight="bold"),
+            rx.text("across 22,634 reviews", size="1", color_scheme="gray"),
+            spacing="2", align="center",
+        ),
+        rx.flex(rx.foreach(ConsoleState.distribution, _pulse_bar),
+                spacing="5", wrap="wrap", width="100%", margin_top="0.7em"),
+        padding="1.1em 1.4em", border_radius="16px",
         border=f"1px solid {rx.color('gray', 4)}", background=rx.color("gray", 1),
-        position=rx.breakpoints(initial="static", md="sticky"), top="84px",
+        width="100%",
     )
 
 
@@ -233,26 +265,18 @@ def console() -> rx.Component:
         _navbar(),
         rx.box(
             rx.vstack(
-                rx.heading("Turn raw reviews into faster, more consistent support.",
-                           size="7", weight="bold", line_height="1.2"),
-                rx.text("Embed every review once, then triage themes, estimate "
-                        "sentiment, and retrieve similar past cases — all locally, "
-                        "no API keys.", color_scheme="gray", size="3", max_width="760px"),
-                spacing="3", align="start", padding_bottom="1.4em",
+                rx.heading("Reply to a customer review in seconds.",
+                           size="8", weight="bold", line_height="1.2"),
+                rx.text("Paste a review — the assistant reads the topic and the "
+                        "customer's mood, sees how similar feedback was handled, "
+                        "and drafts a reply you can edit and send.",
+                        color_scheme="gray", size="4", max_width="640px"),
+                _tool_card(),
+                _pulse(),
+                spacing="5", align="stretch", width="100%",
+                max_width="820px", margin="0 auto",
             ),
-            rx.flex(
-                rx.box(
-                    rx.box(_analyzer(), padding="1.4em", border_radius="16px",
-                           border=f"1px solid {rx.color('gray', 4)}",
-                           background=rx.color("gray", 1)),
-                    flex="1", min_width="0",
-                ),
-                rx.box(_pulse(), width=rx.breakpoints(initial="100%", md="380px"),
-                       flex_shrink="0"),
-                direction=rx.breakpoints(initial="column", md="row"),
-                spacing="6", width="100%", align="start",
-            ),
-            max_width="1240px", margin="0 auto", padding="2em 1.6em 4em", width="100%",
+            padding="2.4em 1.6em 4em", width="100%",
         ),
         background=rx.color("gray", 2), min_height="100vh", width="100%",
     )

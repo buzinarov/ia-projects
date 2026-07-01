@@ -19,10 +19,10 @@ We never report a "theme accuracy". What we *do* validate, in src/evaluate.py, i
 that the underlying embedding space is meaningful -- using the labels the dataset
 actually has (``Recommended IND``, ``Department Name``).
 
-Note on the reference exercise: the original DataCamp snippet selects the theme
-with ``min(..., key=lambda x: x["index"])`` -- which always returns the first
-theme regardless of distance. The correct selection, used here, is the nearest
-anchor by cosine similarity.
+Note on selection: a naive implementation that picks the theme with
+``min(..., key=lambda x: x["index"])`` always returns the first theme regardless
+of distance. The correct selection, used here, is the nearest anchor by cosine
+similarity.
 """
 import numpy as np
 

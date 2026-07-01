@@ -14,8 +14,8 @@ def _basis(dim, k):
 
 
 def test_assign_picks_nearest_anchor_not_index_zero():
-    # The reference DataCamp code always returns theme 0; we must return the
-    # theme whose anchor is actually closest.
+    # A naive "min by index" selection always returns theme 0; we must return
+    # the theme whose anchor is actually closest.
     names = ["A", "B", "C"]
     anchors = _basis(8, 3)              # one anchor per theme, orthogonal
     owners = np.array([0, 1, 2])

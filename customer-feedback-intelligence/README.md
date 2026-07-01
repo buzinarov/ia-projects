@@ -19,11 +19,10 @@ they edge out a TF-IDF baseline on product-area classification (weighted-F1
 sentiment, plain bag-of-words **beats** them (0.88 → 0.85). Saying so is the
 point — the baseline is there to be able to win.
 
-> This project reproduces, and then productizes, the DataCamp exercise *"Topic
-> Analysis of Clothing Reviews with Embeddings"*. The four briefed deliverables
-> (embeddings, a 2D visualization, feedback categorization, similarity search)
-> are delivered end-to-end in [`notebooks/02_topic_analysis.ipynb`](notebooks/02_topic_analysis.ipynb);
-> the full kickoff contract is in [`docs/requirement.md`](docs/requirement.md).
+> The four briefed deliverables (embeddings, a 2D visualization, feedback
+> categorization, similarity search) are delivered end-to-end in
+> [`notebooks/02_topic_analysis.ipynb`](notebooks/02_topic_analysis.ipynb); the
+> full kickoff contract is in [`docs/requirement.md`](docs/requirement.md).
 
 ![Pipeline overview](docs/project_pipeline.png)
 
@@ -48,8 +47,7 @@ into a triage-and-retrieval tool — *without* first standing up a labeling effo
 look) have **no ground-truth labels** in this dataset. So:
 
 - **Theme assignment is an unsupervised triage aid, not a measured classifier.**
-  There is no "theme accuracy" here, and none is invented.
-- **What we measure instead** is whether the *embedding space* is meaningful,
+  There is no "theme accuracy" here, so what we measure instead is whether the *embedding space* is meaningful,
   using the labels the data actually has — `Recommended IND` (sentiment) and
   `Department Name` (product area) — via a linear probe against a **TF-IDF
   baseline**, plus a retrieval proxy against random chance.
@@ -84,9 +82,6 @@ Each theme is described by a few anchor phrases; a review is assigned to the
 theme whose **best-matching anchor** is closest by cosine (max-over-anchors, not
 an averaged centroid — averaging lets two broad themes absorb everything).
 
-> *Reference-code note:* the original DataCamp snippet selects the theme with
-> `min(..., key=lambda x: x["index"])`, which always returns the first theme
-> regardless of distance. The correct selection — nearest anchor — is used here.
 
 ### The measurable core — `src/evaluate.py`
 
@@ -97,19 +92,39 @@ an averaged centroid — averaging lets two broad themes absorb everything).
 - **Retrieval proxy.** For 2,000 sampled reviews, do the 3 nearest neighbors
   share the query's department more than a random review would?
 
-## The app — a working Support Console
+## The app — a Review Reply Assistant
 
-A single-page Reflex app puts the pipeline in front of a support agent: paste an
-incoming review and get its **theme**, a **sentiment** estimate (the majority
-recommend-vote among its nearest past reviews), the **3 most similar past
-reviews**, and a **routing suggestion** — alongside a catalog-pulse view of what
-customers talk about. No LLM: the routing/tone line is a transparent rule on the
-assigned theme and retrieved sentiment, so it runs anywhere.
+A single-page Reflex app turns the pipeline into one concrete task for a support
+agent: **paste a customer review, get a ready-to-edit reply.** The assistant
+reads the review's **topic** (embedding theme triage), the customer's **mood**,
+and how **similar past reviews** read, then drafts a suggested reply the agent
+edits and sends — with a plain-language read (topic · mood · priority · which
+team to route to) and the similar cases shown as evidence.
 
-![Support Console](docs/screenshot_console.png)
+Three deliberate choices make it honest and self-consistent:
+
+- **The evaluation informs the product.** Mood is read with a **TF-IDF sentiment
+  classifier**, not the embeddings — because the project's own probe found
+  bag-of-words *beats* embeddings on short-text sentiment. Embeddings still drive
+  topic and retrieval, where they win. The app uses the model that measured best
+  for each job.
+- **Mood comes from the review itself, not its neighbors.** An early version read
+  sentiment from the nearest past reviews — but for a topic like *"runs small"*,
+  the neighbors are often still-happy customers, which would mislabel a return as
+  positive and draft a cheerful reply to an unhappy customer. The TF-IDF
+  classifier scores *this* review's text.
+- **The draft is written by a local LLM.** A local **Ollama** model
+  (`llama3.1:8b`) writes the reply, grounded in the detected topic and mood — no
+  external API, no keys, nothing that can leak from a public repo. If Ollama
+  isn't running, the app falls back to a transparent template so it always
+  produces a draft. The model is warmed in the background at startup, so the
+  first draft is snappy.
+
+![Review Reply Assistant](docs/screenshot_console.png)
 
 ```bash
-cd app && python -m reflex run     # serves the console at http://localhost:3000
+ollama pull llama3.1:8b            # optional: the draft-writer (template fallback if absent)
+cd app && python -m reflex run     # serves the assistant at http://localhost:3000
 ```
 
 ## Architecture
@@ -138,7 +153,7 @@ notebooks/
 tests/           pytest: theme logic, probe/retrieval math, data + index, regression bounds
 artifacts/       metrics_summary.json, theme_distribution.json, topic maps, most_similar_reviews.json
 docs/            requirement.md, the pipeline diagram, the app screenshot
-app/app/         the Reflex Support Console (console.py + support_service.py)
+app/app/         the Reflex Review Reply Assistant (console.py + support_service.py)
 ```
 
 **Running it:**
@@ -209,14 +224,15 @@ visual evidence the space is semantically meaningful:
 - **No theme ground truth.** The headline limitation, stated up front: theme
   triage is unscored by design. Validating it would need a labeled sample (even a
   few hundred hand-tagged reviews would let us report a real macro-F1).
-- **Sentiment.** Since TF-IDF wins on sentiment here, a shipped sentiment signal
-  should use it (or a fine-tuned encoder) rather than off-the-shelf embeddings.
+- **Sentiment.** Because TF-IDF wins on sentiment here, the app's mood read uses
+  a TF-IDF classifier rather than the embeddings — the evaluation directly shaped
+  the product. A fine-tuned encoder would likely beat both and is the next step.
 - **Retrieval scale.** The Chroma index holds all 22.6k reviews on one machine;
   a production deployment would need an ANN service and freshness handling.
 - **t-SNE is illustrative.** The 2D map is a random 4k-review sample for
   legibility; it drives intuition, not decisions.
 
-## Deliverables map (the DataCamp brief)
+## Deliverables map (the original brief)
 
 | Brief deliverable | Where |
 |---|---|
