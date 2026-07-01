@@ -1,0 +1,12 @@
+data/*
+!data/.gitkeep
+*.pkl
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.venv/
+.pytest_cache/
+app/.web/
+app/.states/
+*.db
+reflex_run.log

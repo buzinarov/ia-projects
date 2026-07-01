@@ -1,0 +1,14 @@
+transformers>=4.44
+torch>=2.2
+datasets>=2.20
+sentencepiece>=0.2
+sacrebleu>=2.4
+evaluate>=0.4
+rouge-score>=0.1
+scikit-learn>=1.5
+pandas>=2.2
+numpy>=1.26
+nltk>=3.9
+reflex>=0.9.5
+ollama>=0.4
+pytest>=8.0

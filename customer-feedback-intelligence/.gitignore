@@ -1,0 +1,13 @@
+data/*
+!data/.gitkeep
+artifacts/embeddings/*.npy
+artifacts/chroma/*
+*.pkl
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.venv/
+.pytest_cache/
+.web/
+reflex.lock/
+*.log

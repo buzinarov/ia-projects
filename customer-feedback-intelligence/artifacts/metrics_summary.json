@@ -1,0 +1,47 @@
+{
+  "dataset": {
+    "n_reviews": 22634,
+    "embedding_model": "all-MiniLM-L6-v2"
+  },
+  "linear_probe": {
+    "recommended": {
+      "n": 22634,
+      "n_classes": 2,
+      "majority_class_accuracy": 0.8188725923308005,
+      "tfidf_baseline": {
+        "accuracy": 0.8907934264004241,
+        "macro_f1": 0.7816433029392593,
+        "weighted_f1": 0.8800993878108772
+      },
+      "embeddings": {
+        "accuracy": 0.8634034281675208,
+        "macro_f1": 0.7259180749234174,
+        "weighted_f1": 0.849716637762232
+      }
+    },
+    "department": {
+      "n": 22621,
+      "n_classes": 6,
+      "majority_class_accuracy": 0.44413012729844414,
+      "tfidf_baseline": {
+        "accuracy": 0.838932107496464,
+        "macro_f1": 0.587719800005054,
+        "weighted_f1": 0.8205359784287606
+      },
+      "embeddings": {
+        "accuracy": 0.8497171145685997,
+        "macro_f1": 0.6320329340191816,
+        "weighted_f1": 0.839974607481531
+      }
+    }
+  },
+  "retrieval_proxy": {
+    "label": "Department Name",
+    "k": 3,
+    "n_queries": 2000,
+    "precision@3": 0.7975,
+    "random_baseline": 0.30449729400349523,
+    "lift_x": 2.62
+  },
+  "honesty_note": "Theme triage is unsupervised (no labels), so it is not scored. These probes test whether the embedding space encodes the labels we DO have (sentiment, department); they stand in for, but do not measure, theme quality."
+}

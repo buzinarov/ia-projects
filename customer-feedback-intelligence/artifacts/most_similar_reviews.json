@@ -1,0 +1,34 @@
+{
+  "query": "Absolutely wonderful - silky and sexy and comfortable",
+  "most_similar_reviews": [
+    "Absolutely wonderful - silky and sexy and comfortable",
+    "Very comfortable, flattering, washes nicely- love it!",
+    "Wonderful and comfortable dress, very sweet."
+  ],
+  "detail": [
+    {
+      "review": "Absolutely wonderful - silky and sexy and comfortable",
+      "department": "Intimate",
+      "recommended": 1,
+      "rating": 4,
+      "class": "Intimates",
+      "distance": -0.0
+    },
+    {
+      "review": "Very comfortable, flattering, washes nicely- love it!",
+      "department": "Tops",
+      "rating": 4,
+      "recommended": 1,
+      "class": "Knits",
+      "distance": 0.269
+    },
+    {
+      "review": "Wonderful and comfortable dress, very sweet.",
+      "recommended": 1,
+      "rating": 5,
+      "class": "Dresses",
+      "department": "Dresses",
+      "distance": 0.2853
+    }
+  ]
+}
